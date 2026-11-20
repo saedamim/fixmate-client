@@ -8,7 +8,6 @@ const links = [
   { href: "/", label: "Home" },
   { href: "/services", label: "Services" },
   { href: "/#how-it-works", label: "How it works" },
-  { href: "/about", label: "About" },
 ];
 
 function WrenchIcon() {
@@ -23,7 +22,6 @@ export default function Navbar() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
-  // "How it works" is a hash link on the home page, so it never gets the active state
   const isActive = (href: string) =>
     !href.includes("#") && (href === "/" ? pathname === "/" : pathname.startsWith(href));
 

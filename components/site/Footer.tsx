@@ -37,7 +37,8 @@ export default function Footer() {
             <li><Link href="/" className="hover:text-teal-700">Home</Link></li>
             <li><Link href="/services" className="hover:text-teal-700">Services</Link></li>
             <li><Link href="/#how-it-works" className="hover:text-teal-700">How it works</Link></li>
-            <li><Link href="/about" className="hover:text-teal-700">About</Link></li>
+            <li><Link href="/sign-in" className="hover:text-teal-700">Sign in</Link></li>
+            <li><Link href="/sign-up" className="hover:text-teal-700">Sign up</Link></li>
           </ul>
         </nav>
 

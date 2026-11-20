@@ -54,6 +54,27 @@ export async function getFeaturedServices(): Promise<Service[]> {
     .slice(0, 6);
 }
 
+export type BookingActivity = {
+  id: string;
+  service: string;
+  customer: string;
+  location: string;
+  status: "Booked" | "Technician on the way" | "Completed";
+  price: number;
+  warranty: string;
+};
+
+// SAMPLE ACTIVITY – fictional names, NOT real bookings. Replace with an API call
+// (e.g. recent bookings from the backend) when it is ready.
+export async function getRecentActivity(): Promise<BookingActivity[]> {
+  return [
+    { id: "a1", service: "AC Repair & Gas Refill", customer: "Sample Customer A", location: "Dhanmondi, Dhaka", status: "Completed", price: 45, warranty: "30-day warranty" },
+    { id: "a2", service: "Laptop Fan Repair", customer: "Sample Customer B", location: "Chattogram", status: "Technician on the way", price: 30, warranty: "15-day warranty" },
+    { id: "a3", service: "Refrigerator Not Cooling Fix", customer: "Sample Customer C", location: "Sylhet", status: "Booked", price: 40, warranty: "30-day warranty" },
+    { id: "a4", service: "Screen Replacement", customer: "Sample Customer D", location: "Rajshahi", status: "Completed", price: 25, warranty: "60-day warranty" },
+  ];
+}
+
 // Static marketing content (not API data)
 export const steps = [
   { title: "Find a Service", text: "Search or browse categories to find the repair you need." },

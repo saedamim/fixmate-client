@@ -1,6 +1,7 @@
 import Link from "next/link";
 import ServiceCard from "@/components/site/ServiceCard";
-import { categories, features, getFeaturedServices, stats, steps, testimonials } from "@/lib/data/services";
+import BookingActivityCard from "@/components/site/BookingActivityCard";
+import { categories, features, getFeaturedServices, getRecentActivity, stats, steps, testimonials } from "@/lib/data/services";
 
 function SectionHeading({ title, subtitle }: { title: string; subtitle: string }) {
   return (
@@ -12,7 +13,7 @@ function SectionHeading({ title, subtitle }: { title: string; subtitle: string }
 }
 
 export default async function Home() {
-  const featured = await getFeaturedServices();
+  const [featured, activity] = await Promise.all([getFeaturedServices(), getRecentActivity()]);
 
   return (
     <main>
@@ -52,11 +53,13 @@ export default async function Home() {
             </div>
           </div>
 
-          <dl className="grid grid-cols-2 gap-4">
+          <BookingActivityCard items={activity} />
+
+          <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4 md:col-span-2">
             {stats.map((s) => (
-              <div key={s.label} className="rounded-2xl bg-white/10 p-5">
+              <div key={s.label} className="rounded-2xl bg-white/10 p-4">
                 <dt className="text-sm text-teal-100">{s.label}</dt>
-                <dd className="mt-1 text-3xl font-bold">{s.value}</dd>
+                <dd className="mt-1 text-2xl font-bold">{s.value}</dd>
               </div>
             ))}
           </dl>
