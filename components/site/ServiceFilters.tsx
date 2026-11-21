@@ -48,8 +48,8 @@ export default function ServiceFilters({ categories, modes, search, category, mo
       </select>
       <select name="sort" defaultValue={sort} aria-label="Sort by" className={fieldClass}>
         <option value="newest">Newest first</option>
-        <option value="price-asc">Price: low to high</option>
-        <option value="price-desc">Price: high to low</option>
+        <option value="price-low-to-high">Price: low to high</option>
+        <option value="price-high-to-low">Price: high to low</option>
       </select>
 
       <div className="flex gap-3 sm:col-span-2 lg:col-span-5">

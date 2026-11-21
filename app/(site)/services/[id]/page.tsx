@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import BookingForm from "@/components/site/BookingForm";
 import { categoryIcon, getServiceById, type ServiceMode } from "@/lib/data/services";
 
 const modeHelp: Record<ServiceMode, string> = {
@@ -71,6 +72,8 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
           )}
         </div>
       </div>
+
+      {service.available && <BookingForm serviceId={service.id} mode={service.mode} />}
     </main>
   );
 }

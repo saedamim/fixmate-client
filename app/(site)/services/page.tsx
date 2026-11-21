@@ -1,3 +1,4 @@
+import Link from "next/link";
 import ServiceCard from "@/components/site/ServiceCard";
 import ServiceFilters from "@/components/site/ServiceFilters";
 import { categories, getServices, serviceModes } from "@/lib/data/services";
@@ -14,8 +15,23 @@ export default async function ServicesPage({ searchParams }: { searchParams: Sea
   const mode = first(params.mode);
   const sort = first(params.sort) || "newest";
 
-  const services = await getServices({ search, category, mode, sort });
+  const page = Math.max(parseInt(first(params.page)) || 1, 1);
+
+  const { services, total, totalPages } = await getServices({ search, category, mode, sort, page });
   const hasFilters = Boolean(search || category || mode || sort !== "newest");
+
+  // Link to another page of the same results (keeps the current search, filters and sort)
+  const pageHref = (n: number) => {
+    const query = new URLSearchParams();
+    if (search) query.set("search", search);
+    if (category) query.set("category", category);
+    if (mode) query.set("mode", mode);
+    if (sort !== "newest") query.set("sort", sort);
+    if (n > 1) query.set("page", String(n));
+    return `/services?${query}`;
+  };
+  const buttonClass =
+    "rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-800 transition hover:bg-gray-50";
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10">
@@ -33,7 +49,7 @@ export default async function ServicesPage({ searchParams }: { searchParams: Sea
       />
 
       <p className="mt-6 text-sm text-gray-600">
-        {services.length} {services.length === 1 ? "service" : "services"} found
+        {total} {total === 1 ? "service" : "services"} found
       </p>
 
       {services.length === 0 ? (
@@ -46,6 +62,22 @@ export default async function ServicesPage({ searchParams }: { searchParams: Sea
             <ServiceCard key={s.id} service={s} />
           ))}
         </div>
+      )}
+
+      {totalPages > 1 && (
+        <nav aria-label="Pagination" className="mt-10 flex items-center justify-center gap-4">
+          {page > 1 ? (
+            <Link href={pageHref(Math.min(page - 1, totalPages))} className={buttonClass}>← Previous</Link>
+          ) : (
+            <span className={`${buttonClass} pointer-events-none opacity-40`}>← Previous</span>
+          )}
+          <span className="text-sm text-gray-600">Page {page} of {totalPages}</span>
+          {page < totalPages ? (
+            <Link href={pageHref(page + 1)} className={buttonClass}>Next →</Link>
+          ) : (
+            <span className={`${buttonClass} pointer-events-none opacity-40`}>Next →</span>
+          )}
+        </nav>
       )}
     </main>
   );
