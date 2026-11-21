@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { authClient, useSession } from "@/lib/auth-client";
 import { API_URL } from "@/lib/data/services";
@@ -91,6 +91,9 @@ export default function MyBookingsPage() {
   const [confirming, setConfirming] = useState<Booking | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState("");
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const dialogOpen = confirming !== null;
 
   // Load the customer's bookings whenever the filter or page changes
   useEffect(() => {
@@ -103,6 +106,11 @@ export default function MyBookingsPage() {
     callApi(`/api/bookings/my?${query}`)
       .then((result) => {
         if (ignore) return;
+        // The current page no longer exists (for example after a cancel): go to the last page
+        if (result.bookings.length === 0 && page > 1) {
+          setPage(result.totalPages || 1);
+          return;
+        }
         setBookings(result.bookings);
         setTotal(result.total);
         setTotalPages(result.totalPages);
@@ -120,15 +128,51 @@ export default function MyBookingsPage() {
     };
   }, [isCustomer, filter, page, attempt]);
 
-  // Close the confirmation dialog with Escape
+  // Dialog keyboard: Escape closes it, Tab stays inside it
   useEffect(() => {
-    if (!confirming) return;
+    if (!dialogOpen) return;
+
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && !cancelling) setConfirming(null);
+      if (e.key !== "Tab") return;
+
+      const buttons = dialogRef.current?.querySelectorAll<HTMLElement>("button:not(:disabled)");
+      if (!buttons?.length) return e.preventDefault();
+
+      const first = buttons[0];
+      const last = buttons[buttons.length - 1];
+      const active = document.activeElement;
+
+      if (!dialogRef.current?.contains(active)) {
+        e.preventDefault();
+        first.focus();
+      } else if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
+
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [confirming, cancelling]);
+  }, [dialogOpen, cancelling]);
+
+  // Move focus into the dialog when it opens and give it back when it closes
+  useEffect(() => {
+    if (!dialogOpen) return;
+
+    const opener = document.activeElement;
+    const heading = headingRef.current;
+    dialogRef.current?.querySelector<HTMLElement>("button")?.focus();
+
+    return () => {
+      // The opener may be gone (its booking was cancelled), so fall back to the page heading
+      if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
+      else heading?.focus();
+    };
+  }, [dialogOpen]);
 
   const selectFilter = (value: "all" | Status) => {
     if (value === filter && page === 1) return; // already showing this list, nothing to reload
@@ -163,10 +207,16 @@ export default function MyBookingsPage() {
 
       const { booking } = await callApi(`/api/bookings/${confirming.id}/cancel`, "PATCH");
 
-      // Update the list in place; drop the booking if it no longer matches the current filter
-      const stillListed = filter === "all" || filter === "cancelled";
-      setBookings((list) => (stillListed ? list.map((b) => (b.id === booking.id ? booking : b)) : list.filter((b) => b.id !== booking.id)));
-      if (!stillListed) setTotal((n) => n - 1);
+      if (filter === "all") {
+        // Same list, same page count: just update the card
+        setBookings((list) => list.map((b) => (b.id === booking.id ? booking : b)));
+      } else {
+        // The booking no longer matches this filter: remove it, then reload quietly
+        // so the page fills up again and the page count is correct
+        setBookings((list) => list.filter((b) => b.id !== booking.id));
+        setTotal((n) => n - 1);
+        setAttempt((n) => n + 1);
+      }
       setConfirming(null);
     } catch (err) {
       setCancelError(errorMessage(err));
@@ -184,7 +234,7 @@ export default function MyBookingsPage() {
       <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
         <p className="text-gray-700">Please sign in to view your bookings.</p>
         <div className="mt-5 flex flex-col justify-center gap-3 sm:flex-row">
-          <Link href="/sign-in" className="rounded-lg bg-orange-500 px-6 py-3 font-semibold text-white transition hover:bg-orange-600">
+          <Link href="/sign-in?redirect=/dashboard/my-bookings" className="rounded-lg bg-orange-500 px-6 py-3 font-semibold text-white transition hover:bg-orange-600">
             Sign in
           </Link>
           <Link href="/sign-up" className="rounded-lg border border-gray-300 px-6 py-3 font-semibold text-gray-800 transition hover:bg-gray-50">
@@ -235,7 +285,7 @@ export default function MyBookingsPage() {
                 Try again
               </button>
               {error === SESSION_EXPIRED && (
-                <Link href="/sign-in" className={buttonClass}>Sign in</Link>
+                <Link href="/sign-in?redirect=/dashboard/my-bookings" className={buttonClass}>Sign in</Link>
               )}
             </div>
           </div>
@@ -324,14 +374,14 @@ export default function MyBookingsPage() {
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10">
-      <h1 className="text-3xl font-bold text-gray-900">My Bookings</h1>
+      <h1 ref={headingRef} tabIndex={-1} className="text-3xl font-bold text-gray-900 outline-none">My Bookings</h1>
       <p className="mt-2 mb-8 text-gray-600">Track and manage your repair requests.</p>
 
       {content}
 
       {confirming && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div role="dialog" aria-modal="true" aria-labelledby="cancel-title" className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+          <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="cancel-title" className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
             <h2 id="cancel-title" className="text-lg font-bold text-gray-900">Cancel this booking?</h2>
             <p className="mt-2 text-sm text-gray-600">
               {confirming.serviceTitle} on {formatDate(confirming.preferredDate)}, {confirming.preferredTime}. This cannot be undone.

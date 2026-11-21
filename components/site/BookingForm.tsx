@@ -147,9 +147,14 @@ export default function BookingForm({ serviceId, mode }: { serviceId: string; mo
         <p className="mt-1 text-sm">
           Requested for {booked.date}, {booked.time}. The technician will review your request, and you pay after the repair is completed.
         </p>
-        <Link href="/services" className="mt-4 inline-block text-sm font-semibold text-green-800 underline">
-          Back to services
-        </Link>
+        <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm font-semibold">
+          <Link href="/dashboard/my-bookings" className="text-green-800 underline">
+            View my bookings
+          </Link>
+          <Link href="/services" className="text-green-800 underline">
+            Back to services
+          </Link>
+        </div>
       </div>
     );
   } else {

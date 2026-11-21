@@ -6,6 +6,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "@/lib/auth-client";
 
+// Where to go after signing in: ?redirect=/some/path (same-site paths only), otherwise home
+const getRedirect = () => {
+  const target = new URLSearchParams(window.location.search).get("redirect");
+  return target && target.startsWith("/") && !target.startsWith("//") && !target.startsWith("/\\") ? target : "/";
+};
+
 export default function SignInPage() {
   const router = useRouter();
 
@@ -32,7 +38,7 @@ export default function SignInPage() {
         return;
       }
 
-      router.push("/");
+      router.push(getRedirect());
       router.refresh();
     } catch {
       setError("Something went wrong. Please try again.");
@@ -49,7 +55,7 @@ export default function SignInPage() {
 
       const { error } = await signIn.social({
         provider: "google",
-        callbackURL: "/",
+        callbackURL: getRedirect(),
       });
 
       if (error) {

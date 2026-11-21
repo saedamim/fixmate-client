@@ -3,12 +3,16 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "@/lib/auth-client";
 
 const links = [
   { href: "/", label: "Home" },
   { href: "/services", label: "Services" },
   { href: "/#how-it-works", label: "How it works" },
 ];
+
+const myBookingsLink = { href: "/dashboard/my-bookings", label: "My Bookings" };
+const technicianLink = { href: "/dashboard/technician", label: "Technician Dashboard" };
 
 function WrenchIcon() {
   return (
@@ -21,6 +25,11 @@ function WrenchIcon() {
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const { data: session } = useSession();
+
+  // Extra link by role: "My Bookings" for customers, "Technician Dashboard" for technicians
+  const role = session?.user.role;
+  const navLinks = role === "customer" ? [...links, myBookingsLink] : role === "technician" ? [...links, technicianLink] : links;
 
   const isActive = (href: string) =>
     !href.includes("#") && (href === "/" ? pathname === "/" : pathname.startsWith(href));
@@ -41,7 +50,7 @@ export default function Navbar() {
         </Link>
 
         <ul className="hidden items-center gap-8 md:flex">
-          {links.map((l) => (
+          {navLinks.map((l) => (
             <li key={l.href}>
               <Link
                 href={l.href}
@@ -79,7 +88,7 @@ export default function Navbar() {
       {open && (
         <div className="border-t border-gray-200 bg-white px-4 py-4 md:hidden">
           <ul className="space-y-1">
-            {links.map((l) => (
+            {navLinks.map((l) => (
               <li key={l.href}>
                 <Link
                   href={l.href}
