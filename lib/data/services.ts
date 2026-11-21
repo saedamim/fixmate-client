@@ -75,6 +75,33 @@ export async function getRecentActivity(): Promise<BookingActivity[]> {
   ];
 }
 
+export const serviceModes: ServiceMode[] = ["On-site", "In-shop", "Pickup & Drop"];
+
+export type ServiceFilters = {
+  search?: string;
+  category?: string;
+  mode?: string;
+  sort?: string; // "newest" | "price-asc" | "price-desc"
+};
+
+/** Approved, available services with optional search, filters and sorting. */
+export async function getServices({ search, category, mode, sort }: ServiceFilters = {}): Promise<Service[]> {
+  const term = search?.trim().toLowerCase();
+
+  const result = sampleServices.filter(
+    (s) =>
+      s.status === "approved" &&
+      s.available &&
+      (!category || s.category === category) &&
+      (!mode || s.mode === mode) &&
+      (!term || `${s.title} ${s.category} ${s.technician}`.toLowerCase().includes(term)),
+  );
+
+  if (sort === "price-asc") return result.sort((a, b) => a.price - b.price);
+  if (sort === "price-desc") return result.sort((a, b) => b.price - a.price);
+  return result.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
 // Static marketing content (not API data)
 export const steps = [
   { title: "Find a Service", text: "Search or browse categories to find the repair you need." },
