@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
-// SAMPLE DATA – replace with real API calls when the backend is ready.
-// Only the `get*` functions below are used by pages, so connecting the backend
-// means changing their bodies (e.g. `fetch(`${API_URL}/api/services?...`)`).
+// `getFeaturedServices` (Home page) already uses the backend API.
+// The other `get*` functions still read SAMPLE DATA below – replace their bodies
+// with API calls the same way when those pages are connected.
 // ---------------------------------------------------------------------------
 
 export type ServiceMode = "On-site" | "In-shop" | "Pickup & Drop";
@@ -9,6 +9,7 @@ export type ServiceMode = "On-site" | "In-shop" | "Pickup & Drop";
 export type Service = {
   id: string;
   title: string;
+  description: string;
   category: string;
   mode: ServiceMode;
   price: number;
@@ -34,23 +35,42 @@ export const categoryIcon = (name: string) =>
   categories.find((c) => c.name === name)?.icon ?? "🔧";
 
 const sampleServices: Service[] = [
-  { id: "s1", title: "Screen & Battery Replacement", category: "Smartphone", mode: "In-shop", price: 25, technician: "Rafiq Ahmed", imageUrl: null, status: "approved", available: true, featured: true, createdAt: "2026-11-18" },
-  { id: "s2", title: "Laptop Overheating & Fan Repair", category: "Laptop & PC", mode: "Pickup & Drop", price: 30, technician: "Nusrat Jahan", imageUrl: null, status: "approved", available: true, featured: true, createdAt: "2026-11-16" },
-  { id: "s3", title: "AC Repair & Gas Refill", category: "AC", mode: "On-site", price: 45, technician: "Karim Hossain", imageUrl: null, status: "approved", available: true, featured: true, createdAt: "2026-11-15" },
-  { id: "s4", title: "Refrigerator Not Cooling Fix", category: "Refrigerator", mode: "On-site", price: 40, technician: "Sadia Islam", imageUrl: null, status: "approved", available: true, featured: true, createdAt: "2026-11-12" },
-  { id: "s5", title: "LED / Smart TV Panel Repair", category: "TV", mode: "In-shop", price: 55, technician: "Tanvir Alam", imageUrl: null, status: "approved", available: true, featured: true, createdAt: "2026-11-10" },
-  { id: "s6", title: "Washing Machine Drain & Spin Repair", category: "Washing Machine", mode: "On-site", price: 35, technician: "Mizanur Rahman", imageUrl: null, status: "approved", available: true, featured: true, createdAt: "2026-11-08" },
-  { id: "s7", title: "House Wiring & Switchboard Repair", category: "Electrical", mode: "On-site", price: 20, technician: "Habib Khan", imageUrl: null, status: "approved", available: true, featured: true, createdAt: "2026-11-05" },
+  { id: "s1", title: "Screen & Battery Replacement", description: "Cracked screen or weak battery? We replace screens and batteries for most popular smartphone brands using quality parts, and test touch, display and charging before returning the phone.", category: "Smartphone", mode: "In-shop", price: 25, technician: "Rafiq Ahmed", imageUrl: null, status: "approved", available: true, featured: true, createdAt: "2026-11-18" },
+  { id: "s2", title: "Laptop Overheating & Fan Repair", description: "Fixes laptops that run hot, shut down or have a noisy fan. Includes cleaning dust, replacing thermal paste and swapping a faulty fan, with a full temperature check afterwards.", category: "Laptop & PC", mode: "Pickup & Drop", price: 30, technician: "Nusrat Jahan", imageUrl: null, status: "approved", available: true, featured: true, createdAt: "2026-11-16" },
+  { id: "s3", title: "AC Repair & Gas Refill", description: "Diagnosis and repair for air conditioners that are not cooling, leaking water or making noise. Includes gas leak checking, gas refill and a cooling performance test.", category: "AC", mode: "On-site", price: 45, technician: "Karim Hossain", imageUrl: null, status: "approved", available: true, featured: true, createdAt: "2026-11-15" },
+  { id: "s4", title: "Refrigerator Not Cooling Fix", description: "Repair for refrigerators that are not cooling, freezing too much or running loudly. Covers thermostat, compressor relay, door seal and fan checks.", category: "Refrigerator", mode: "On-site", price: 40, technician: "Sadia Islam", imageUrl: null, status: "approved", available: true, featured: true, createdAt: "2026-11-12" },
+  { id: "s5", title: "LED / Smart TV Panel Repair", description: "Repair for LED and smart TVs with display lines, dark screens, backlight faults or sound problems. The panel and power board are inspected before any repair starts.", category: "TV", mode: "In-shop", price: 55, technician: "Tanvir Alam", imageUrl: null, status: "approved", available: true, featured: true, createdAt: "2026-11-10" },
+  { id: "s6", title: "Washing Machine Drain & Spin Repair", description: "Fixes washing machines that do not drain, spin or start. Covers drain pump, belt, door lock and inlet valve problems for front and top loaders.", category: "Washing Machine", mode: "On-site", price: 35, technician: "Mizanur Rahman", imageUrl: null, status: "approved", available: true, featured: true, createdAt: "2026-11-08" },
+  { id: "s7", title: "House Wiring & Switchboard Repair", description: "Safe repair of switchboards, sockets, wiring faults and tripping breakers by an experienced electrician. All work is tested before the visit ends.", category: "Electrical", mode: "On-site", price: 20, technician: "Habib Khan", imageUrl: null, status: "approved", available: true, featured: true, createdAt: "2026-11-05" },
   // Excluded from the home page: not approved / unavailable / not featured
-  { id: "s8", title: "Water Pump Repair", category: "Electrical", mode: "On-site", price: 28, technician: "Habib Khan", imageUrl: null, status: "pending", available: true, featured: true, createdAt: "2026-11-19" },
-  { id: "s9", title: "Console Repair", category: "Laptop & PC", mode: "In-shop", price: 35, technician: "Nusrat Jahan", imageUrl: null, status: "approved", available: false, featured: true, createdAt: "2026-11-17" },
+  { id: "s8", title: "Water Pump Repair", description: "Repair and servicing for household water pumps that fail to start, lose pressure or overheat.", category: "Electrical", mode: "On-site", price: 28, technician: "Habib Khan", imageUrl: null, status: "pending", available: true, featured: true, createdAt: "2026-11-19" },
+  { id: "s9", title: "Console Repair", description: "Repair for game consoles with overheating, disc drive or power problems.", category: "Laptop & PC", mode: "In-shop", price: 35, technician: "Nusrat Jahan", imageUrl: null, status: "approved", available: false, featured: true, createdAt: "2026-11-17" },
 ];
 
-/** 6 latest approved, available, featured services (newest first). */
+/** One approved service by id, or null (the page then shows "not found"). */
+export async function getServiceById(id: string): Promise<Service | null> {
+  return sampleServices.find((s) => s.id === id && s.status === "approved") ?? null;
+}
+
+// Backend base URL (same server as auth). The /api/services endpoint returns
+// approved services as { services, total, page, limit, totalPages }.
+const API_URL = process.env.NEXT_PUBLIC_BETTER_AUTH_URL ?? "http://localhost:8000";
+
+/**
+ * 6 latest approved, available, featured services from the backend API.
+ * The API has no `featured` filter, so it returns approved services (newest
+ * first, max 50 per request) and the featured ones are picked here.
+ * Throws if the API cannot be reached.
+ */
 export async function getFeaturedServices(): Promise<Service[]> {
-  return sampleServices
+  const response = await fetch(`${API_URL}/api/services?limit=50`);
+  if (!response.ok) throw new Error(`Services API responded with ${response.status}`);
+
+  const { services }: { services: Service[] } = await response.json();
+
+  return services
     .filter((s) => s.status === "approved" && s.available && s.featured)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 6);
 }
 
@@ -97,9 +117,11 @@ export async function getServices({ search, category, mode, sort }: ServiceFilte
       (!term || `${s.title} ${s.category} ${s.technician}`.toLowerCase().includes(term)),
   );
 
-  if (sort === "price-asc") return result.sort((a, b) => a.price - b.price);
-  if (sort === "price-desc") return result.sort((a, b) => b.price - a.price);
-  return result.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  // `result` is a new array (from filter), so sorting never changes sampleServices.
+  // Number()/Date convert values safely if the backend sends prices as strings.
+  if (sort === "price-asc") return result.sort((a, b) => Number(a.price) - Number(b.price));
+  if (sort === "price-desc") return result.sort((a, b) => Number(b.price) - Number(a.price));
+  return result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 // Static marketing content (not API data)

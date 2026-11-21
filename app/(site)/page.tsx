@@ -1,7 +1,9 @@
+import { Suspense } from "react";
 import Link from "next/link";
+import { connection } from "next/server";
 import ServiceCard from "@/components/site/ServiceCard";
 import BookingActivityCard from "@/components/site/BookingActivityCard";
-import { categories, features, getFeaturedServices, getRecentActivity, stats, steps, testimonials } from "@/lib/data/services";
+import { categories, features, getFeaturedServices, getRecentActivity, stats, steps, testimonials, type Service } from "@/lib/data/services";
 
 function SectionHeading({ title, subtitle }: { title: string; subtitle: string }) {
   return (
@@ -12,8 +14,46 @@ function SectionHeading({ title, subtitle }: { title: string; subtitle: string }
   );
 }
 
+const messageClass = "rounded-2xl border border-dashed border-gray-300 p-10 text-center text-gray-600";
+
+function FeaturedSkeleton() {
+  return (
+    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true">
+      {[1, 2, 3].map((n) => (
+        <div key={n} className="h-80 animate-pulse rounded-2xl bg-gray-100" />
+      ))}
+    </div>
+  );
+}
+
+// Fetches from the backend API; shows an error or empty message instead of crashing the page
+async function FeaturedServices() {
+  await connection(); // fetch at request time, not while prerendering
+
+  let featured: Service[];
+
+  try {
+    featured = await getFeaturedServices();
+  } catch (error) {
+    console.error("Could not load featured services:", error);
+    return <p className={messageClass}>Featured services could not be loaded. Please try again later.</p>;
+  }
+
+  if (featured.length === 0) {
+    return <p className={messageClass}>No featured services are available right now. Please check back soon.</p>;
+  }
+
+  return (
+    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      {featured.map((s) => (
+        <ServiceCard key={s.id} service={s} />
+      ))}
+    </div>
+  );
+}
+
 export default async function Home() {
-  const [featured, activity] = await Promise.all([getFeaturedServices(), getRecentActivity()]);
+  const activity = await getRecentActivity();
 
   return (
     <main>
@@ -88,17 +128,9 @@ export default async function Home() {
       <section className="bg-white py-16">
         <div className="mx-auto max-w-6xl px-4">
           <SectionHeading title="Featured services" subtitle="The latest approved services from trusted technicians." />
-          {featured.length === 0 ? (
-            <p className="rounded-2xl border border-dashed border-gray-300 p-10 text-center text-gray-600">
-              No featured services are available right now. Please check back soon.
-            </p>
-          ) : (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {featured.map((s) => (
-                <ServiceCard key={s.id} service={s} />
-              ))}
-            </div>
-          )}
+          <Suspense fallback={<FeaturedSkeleton />}>
+            <FeaturedServices />
+          </Suspense>
           <div className="mt-10 text-center">
             <Link href="/services" className="font-semibold text-teal-700 hover:underline">
               View all services →
