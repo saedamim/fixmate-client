@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "@/lib/auth-client";
@@ -12,7 +12,12 @@ const links = [
   { href: "/#how-it-works", label: "How it works" },
 ];
 
-const myBookingsLink = { href: "/dashboard/my-bookings", label: "My Bookings" };
+// Account menu (avatar dropdown). Customers get their dashboard pages here instead of separate navbar buttons.
+const customerMenu = [
+  { href: "/dashboard/customer/bookings", label: "My Bookings" },
+  { href: "/dashboard/customer/payments", label: "Payment History" },
+  { href: "/dashboard/profile", label: "Update Profile" },
+];
 const technicianLink = { href: "/dashboard/technician", label: "Technician Dashboard" };
 const adminLink = { href: "/dashboard/admin", label: "Admin Dashboard" };
 
@@ -30,15 +35,33 @@ export default function Navbar() {
   const router = useRouter();
   const { data: session, isPending } = useSession();
 
-  // Extra link by role: "My Bookings" (customer), "Technician Dashboard" (technician), "Admin Dashboard" (admin)
-  const roleLinks = { customer: myBookingsLink, technician: technicianLink, admin: adminLink };
-  const roleLink = roleLinks[session?.user.role as keyof typeof roleLinks];
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  // Signed out: only Home. Signed in: the main links plus the link for the user's role.
+  // Technicians and admins keep their dashboard link in the navbar; customers use the avatar menu instead
+  const role = session?.user.role;
+  const roleLink = role === "technician" ? technicianLink : role === "admin" ? adminLink : null;
+  const accountLinks = role === "customer" ? customerMenu : roleLink ? [roleLink] : [];
+
+  // Signed out: only Home. Signed in: the main links plus the dashboard link for technician/admin.
   const navLinks = session ? (roleLink ? [...links, roleLink] : links) : [links[0]];
+
+  // The avatar menu closes on Escape or a click outside it
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMenuOpen(false);
+    const onClick = (e: MouseEvent) => menuRef.current && !menuRef.current.contains(e.target as Node) && setMenuOpen(false);
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onClick);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onClick);
+    };
+  }, [menuOpen]);
 
   const handleLogout = async () => {
     setOpen(false);
+    setMenuOpen(false);
     try {
       await signOut(); // updates useSession everywhere, so the Navbar changes straight away
     } finally {
@@ -82,17 +105,45 @@ export default function Navbar() {
         {/* Nothing is shown while the session loads, so signed-in users never see a flash of Sign in / Sign up */}
         <div className="hidden items-center gap-3 md:flex">
           {isPending ? null : session ? (
-            <>
-              <Avatar name={session.user.name} src={session.user.image} size={32} />
-              <span className="max-w-[10rem] truncate text-sm font-medium text-gray-800">Welcome, {session.user.name}</span>
+            <div ref={menuRef} className="relative">
               <button
                 type="button"
-                onClick={handleLogout}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-800 transition hover:bg-gray-50"
+                onClick={() => setMenuOpen(!menuOpen)}
+                aria-label="Account menu"
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                className="flex items-center gap-2 rounded-full p-0.5 transition hover:ring-2 hover:ring-teal-100"
               >
-                Logout
+                <Avatar name={session.user.name} src={session.user.image} size={36} />
               </button>
-            </>
+              {menuOpen && (
+                <div role="menu" className="absolute right-0 mt-2 w-56 rounded-xl border border-gray-200 bg-white py-2 shadow-lg">
+                  <div className="border-b border-gray-100 px-4 pb-2">
+                    <p className="truncate text-sm font-semibold text-gray-900">{session.user.name}</p>
+                    <p className="truncate text-xs text-gray-600">{session.user.email}</p>
+                  </div>
+                  {accountLinks.map((l) => (
+                    <Link
+                      key={l.href}
+                      href={l.href}
+                      role="menuitem"
+                      onClick={() => setMenuOpen(false)}
+                      className="block px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 hover:text-teal-700"
+                    >
+                      {l.label}
+                    </Link>
+                  ))}
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={handleLogout}
+                    className={`block w-full px-4 py-2 text-left text-sm font-medium text-red-600 hover:bg-gray-50 ${accountLinks.length ? "mt-1 border-t border-gray-100" : ""}`}
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              )}
+            </div>
           ) : (
             <>
               <Link href="/sign-in" className="text-sm font-semibold text-gray-800 hover:text-teal-700">
@@ -140,14 +191,25 @@ export default function Navbar() {
             <div className="mt-4">
               <div className="flex items-center gap-3 px-3">
                 <Avatar name={session.user.name} src={session.user.image} size={32} />
-                <p className="truncate text-sm font-medium text-gray-800">Welcome, {session.user.name}</p>
+                <p className="truncate text-sm font-medium text-gray-800">{session.user.name}</p>
               </div>
+              {role === "customer" && (
+                <ul className="mt-2 space-y-1">
+                  {customerMenu.map((l) => (
+                    <li key={l.href}>
+                      <Link href={l.href} onClick={() => setOpen(false)} className="block rounded-lg px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50">
+                        {l.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
               <button
                 type="button"
                 onClick={handleLogout}
-                className="mt-3 w-full rounded-lg border border-gray-300 py-2 text-center text-sm font-semibold text-gray-800"
+                className="mt-3 w-full rounded-lg border border-gray-300 py-2 text-center text-sm font-semibold text-red-600"
               >
-                Logout
+                Sign Out
               </button>
             </div>
           ) : (
