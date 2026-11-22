@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
-import { bdt } from "@/lib/currency";
+import { usdMoney } from "@/lib/currency";
 import { formatDateTime, paymentStatusLabel, paymentStatusOptions, paymentStatusStyle, shortId, type Payment } from "@/lib/payments";
 import { PagedList } from "@/components/dashboard/PagedList";
 
@@ -26,7 +26,7 @@ function PaymentRows({ payments }: { payments: Payment[] }) {
           <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
             <div>
               <dt className="text-gray-500">Amount</dt>
-              <dd className="font-medium text-gray-900">{bdt(p.amount)} <span className="text-xs font-normal text-gray-500">{p.currency}</span></dd>
+              <dd className="font-medium text-gray-900">{usdMoney(p.amount)} <span className="text-xs font-normal text-gray-500">{p.currency.toUpperCase()}</span></dd>
             </div>
             <div>
               <dt className="text-gray-500">Method</dt>
@@ -43,7 +43,7 @@ function PaymentRows({ payments }: { payments: Payment[] }) {
               </div>
             )}
           </dl>
-          <p className="mt-3 break-all text-xs text-gray-500">Reference: {p.tranId}</p>
+          {p.transactionId && <p className="mt-3 break-all text-xs text-gray-500">Transaction ID: {p.transactionId}</p>}
         </article>
       ))}
     </div>

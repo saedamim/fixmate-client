@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { categoryIcon, type Service } from "@/lib/data/services";
-import { bdt } from "@/lib/currency";
+import { usd } from "@/lib/currency";
 
 export default function ServiceCard({ service }: { service: Service }) {
   return (
@@ -24,7 +24,7 @@ export default function ServiceCard({ service }: { service: Service }) {
 
         <div className="mt-auto flex items-center justify-between pt-5">
           <p className="text-sm text-gray-600">
-            From <span className="text-lg font-bold text-gray-900">{bdt(service.price)}</span>
+            From <span className="text-lg font-bold text-gray-900">{usd(service.price)}</span>
           </p>
           <Link href={`/services/${service.id}`} className="rounded-lg bg-teal-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-800">
             View Details

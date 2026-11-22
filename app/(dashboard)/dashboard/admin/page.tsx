@@ -7,7 +7,7 @@ import { callApi, errorMessage } from "@/lib/api";
 import { formatDate, statusLabel, statusStyle, type BookingStatus } from "@/lib/bookings";
 import type { Service } from "@/lib/data/services";
 import { PagedList, ErrorBox, forbiddenMessage, type Option } from "@/components/dashboard/PagedList";
-import { bdt } from "@/lib/currency";
+import { usd } from "@/lib/currency";
 
 type Stats = {
   users: { total: number; customer: number; technician: number; admin: number };
@@ -60,7 +60,7 @@ const serviceStatusStyle: Record<Service["status"], string> = {
 
 const actionClass = "rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60";
 
-const money = (amount: number) => bdt(Number(amount.toFixed(2)));
+const money = (amount: number) => usd(Number(amount.toFixed(2)));
 
 // ---------------------------------------------------------------------------
 // Overview: platform statistics from GET /api/admin/stats
@@ -176,7 +176,7 @@ function ServiceRows({ services, reload }: { services: Service[]; reload: () => 
               {s.status}
             </span>
           </div>
-          <p className="mt-3 text-sm text-gray-700">By {s.technician} · From {bdt(s.price)}</p>
+          <p className="mt-3 text-sm text-gray-700">By {s.technician} · From {usd(s.price)}</p>
 
           <div className="mt-4 flex gap-3">
             {s.status !== "approved" && (
@@ -221,7 +221,7 @@ function BookingRows({ bookings }: { bookings: Booking[] }) {
             </div>
             <div>
               <dt className="text-gray-500">{b.finalAmount !== undefined ? "Final amount" : "Price"}</dt>
-              <dd className="font-medium text-gray-900">{bdt(b.finalAmount ?? b.price)}</dd>
+              <dd className="font-medium text-gray-900">{usd(b.finalAmount ?? b.price)}</dd>
             </div>
             <div>
               <dt className="text-gray-500">Payment</dt>

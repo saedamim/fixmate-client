@@ -319,7 +319,7 @@ export default function TechnicianDashboardPage() {
                         {completingId === r.id ? (
                           <div className="mt-5">
                             <label htmlFor={`amount-${r.id}`} className="mb-2 block text-sm font-semibold text-gray-800">
-                              Final amount (৳)
+                              Final amount ($)
                             </label>
                             <div className="flex flex-wrap gap-3">
                               <input

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
-import { bdt } from "@/lib/currency";
+import { usdMoney } from "@/lib/currency";
 import { formatDateTime, paymentStatusLabel, paymentStatusOptions, paymentStatusStyle, shortId, type Transaction } from "@/lib/payments";
 import { PagedList, forbiddenMessage } from "@/components/dashboard/PagedList";
 
@@ -14,11 +14,11 @@ function TransactionRows({ transactions }: { transactions: Transaction[] }) {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="font-semibold text-gray-900">{t.serviceTitle}</p>
-              <p className="mt-1 break-all font-mono text-xs text-gray-500">{t.tranId}</p>
+              <p className="mt-1 break-all font-mono text-xs text-gray-500">{t.transactionId ?? t.stripeSessionId ?? "No transaction ID yet"}</p>
             </div>
             <div className="flex items-center gap-3">
               <span className="text-lg font-bold text-gray-900">
-                {bdt(t.amount)} <span className="text-xs font-normal text-gray-500">{t.currency}</span>
+                {usdMoney(t.amount)} <span className="text-xs font-normal text-gray-500">{t.currency.toUpperCase()}</span>
               </span>
               <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${paymentStatusStyle[t.status]}`}>
                 {paymentStatusLabel[t.status]}
@@ -32,13 +32,14 @@ function TransactionRows({ transactions }: { transactions: Transaction[] }) {
               <dd className="font-medium text-gray-900">{t.customerName || "—"}</dd>
               {t.customerEmail && <dd className="break-all text-xs text-gray-600">{t.customerEmail}</dd>}
             </div>
-            <div>
-              <dt className="text-gray-500">Booking</dt>
-              <dd className="font-medium text-gray-900">#{shortId(t.bookingId)}</dd>
+            <div className="min-w-0">
+              <dt className="text-gray-500">Technician</dt>
+              <dd className="font-medium text-gray-900">{t.technicianName || "—"}</dd>
+              {t.technicianEmail && <dd className="break-all text-xs text-gray-600">{t.technicianEmail}</dd>}
             </div>
             <div>
-              <dt className="text-gray-500">Provider</dt>
-              <dd className="font-medium text-gray-900">{t.provider}</dd>
+              <dt className="text-gray-500">Booking · Provider</dt>
+              <dd className="font-medium text-gray-900">#{shortId(t.bookingId)} · {t.provider ?? "Stripe"}</dd>
             </div>
             <div>
               <dt className="text-gray-500">{t.paidAt ? "Paid" : "Started"}</dt>

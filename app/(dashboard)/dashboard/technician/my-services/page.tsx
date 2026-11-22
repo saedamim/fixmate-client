@@ -6,7 +6,7 @@ import { useSession } from "@/lib/auth-client";
 import { callApi, errorMessage, SESSION_EXPIRED } from "@/lib/api";
 import ServiceForm, { forbiddenMessage } from "@/components/site/ServiceForm";
 import { categoryIcon, type Service } from "@/lib/data/services";
-import { bdt } from "@/lib/currency";
+import { usd } from "@/lib/currency";
 
 type ServiceStatus = Service["status"];
 
@@ -257,7 +257,7 @@ export default function MyServicesPage() {
                             <h3 className="font-semibold text-gray-900">{s.title}</h3>
                             <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${statusStyle[s.status]}`}>{statusLabel[s.status]}</span>
                           </div>
-                          <p className="mt-1 text-sm text-gray-600">{s.category} · {s.mode} · {bdt(s.price)}</p>
+                          <p className="mt-1 text-sm text-gray-600">{s.category} · {s.mode} · {usd(s.price)}</p>
                         </div>
                       </div>
 

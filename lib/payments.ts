@@ -1,5 +1,5 @@
 // Payment record fields and labels shared by the customer Payment History and the admin Transactions page.
-// A payment is "paid" only when the backend has validated it with SSLCommerz; the client never decides that.
+// A payment is "paid" only when the backend has confirmed it with Stripe; the client never decides that.
 export type PaymentStatus = "pending" | "paid" | "failed" | "cancelled";
 
 export const paymentStatusOptions: { value: string; label: string }[] = [
@@ -24,24 +24,27 @@ export const paymentStatusStyle: Record<PaymentStatus, string> = {
   cancelled: "bg-gray-100 text-gray-600",
 };
 
-// Shape of a payment from GET /api/payments/my
+// A payment from GET /api/payments/my (Stripe Checkout, USD)
 export type Payment = {
   id: string;
   bookingId: string;
-  tranId: string;
   serviceTitle: string;
   amount: number;
-  currency: string;
-  provider: string;
+  currency: string; // "usd"
+  provider: string; // "Stripe"
   status: PaymentStatus;
+  transactionId: string | null; // the Stripe payment id, set once the payment is confirmed
   createdAt: string; // ISO date-time
   paidAt: string | null;
 };
 
-// A transaction from GET /api/admin/transactions: the same record plus who paid and a few review fields
-export type Transaction = Payment & {
+// A transaction from GET /api/admin/transactions: the same record plus who paid, who was paid and review fields
+export type Transaction = Omit<Payment, "provider"> & {
+  provider?: string;
+  stripeSessionId?: string | null;
   customerName?: string;
   customerEmail?: string;
+  technicianName?: string | null;
   technicianEmail?: string | null;
   failureReason?: string | null;
   reviewRequired?: boolean;

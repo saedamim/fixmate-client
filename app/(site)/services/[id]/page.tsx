@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { categoryIcon, getServiceById, type ServiceMode } from "@/lib/data/services";
-import { bdt } from "@/lib/currency";
+import { usd } from "@/lib/currency";
 
 const modeHelp: Record<ServiceMode, string> = {
   "On-site": "The technician visits your home.",
@@ -43,7 +43,7 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
           <dl className="mt-6 divide-y divide-gray-200 rounded-2xl border border-gray-200 bg-white text-sm">
             <div className="flex justify-between gap-4 p-4">
               <dt className="text-gray-600">Starting price</dt>
-              <dd className="text-2xl font-bold text-gray-900">{bdt(service.price)}</dd>
+              <dd className="text-2xl font-bold text-gray-900">{usd(service.price)}</dd>
             </div>
             <div className="flex justify-between gap-4 p-4">
               <dt className="text-gray-600">Service mode</dt>

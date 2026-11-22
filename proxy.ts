@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
 
-// Services, service details (with booking) and the dashboards are for signed-in users.
+// Services, service details (with booking), the dashboards and the payment confirmation page are for signed-in users.
 // The Home page ("/") is NOT listed in the matcher below and must always stay public.
 //
 // This is a quick, optimistic check (is there a session cookie?); the Express API still checks
@@ -16,5 +16,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/services", "/services/:path*", "/dashboard/:path*"],
+  matcher: ["/services", "/services/:path*", "/dashboard/:path*", "/payment/success"],
 };

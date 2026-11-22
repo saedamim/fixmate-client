@@ -174,7 +174,7 @@ export default function ServiceForm({
             {fieldError("mode")}
           </div>
           <div>
-            <label htmlFor="price" className="mb-2 block text-sm font-semibold text-gray-800">Starting price (৳)</label>
+            <label htmlFor="price" className="mb-2 block text-sm font-semibold text-gray-800">Starting price ($)</label>
             <input id="price" type="number" min="0" step="0.01" value={form.price} onChange={(e) => update("price", e.target.value)} aria-invalid={Boolean(errors.price)} className={inputClass} />
             {fieldError("price")}
           </div>

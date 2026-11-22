@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
 import { callApi, errorMessage, SESSION_EXPIRED } from "@/lib/api";
 import { formatDate, statusLabel, statusStyle, type BookingStatus as Status } from "@/lib/bookings";
-import { bdt } from "@/lib/currency";
+import { usd } from "@/lib/currency";
 
 type Booking = {
   id: string;
@@ -35,6 +35,16 @@ const filters: { value: "all" | Status; label: string }[] = [
 
 const forbiddenMessage = "Only customer accounts can view bookings.";
 
+// Stripe Checkout pages live on checkout.stripe.com: never send the browser anywhere else
+const isStripeCheckoutUrl = (value: unknown): value is string => {
+  try {
+    const url = new URL(String(value));
+    return url.protocol === "https:" && url.hostname === "checkout.stripe.com";
+  } catch {
+    return false;
+  }
+};
+
 const buttonClass =
   "rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-800 transition hover:bg-gray-50";
 
@@ -55,10 +65,9 @@ export default function MyBookingsPage() {
   const [confirming, setConfirming] = useState<Booking | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState("");
-  // Payment: the booking being sent to the gateway, a per-booking error, and the outcome of a return from the gateway
+  // Payment: the booking being sent to Stripe Checkout, and a per-booking error
   const [payingId, setPayingId] = useState("");
   const [payError, setPayError] = useState<{ id: string; message: string } | null>(null);
-  const [returned, setReturned] = useState<"success" | "failed" | "cancelled" | "">("");
   const dialogRef = useRef<HTMLDivElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const dialogOpen = confirming !== null;
@@ -96,25 +105,6 @@ export default function MyBookingsPage() {
       ignore = true;
     };
   }, [isCustomer, filter, page, attempt]);
-
-  // The gateway sends the customer back here with ?payment=success|failed|cancelled. That is only a redirect, so it
-  // never marks anything as paid: the list is reloaded and the backend (after SSLCommerz validation) is the only source.
-  useEffect(() => {
-    const outcome = new URLSearchParams(window.location.search).get("payment");
-    if (outcome !== "success" && outcome !== "failed" && outcome !== "cancelled") return;
-
-    window.history.replaceState(null, "", window.location.pathname); // so a refresh does not repeat the notice
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- reading the URL once on arrival
-    setReturned(outcome);
-    setAttempt((n) => n + 1);
-  }, []);
-
-  // The payment provider confirms in the background, so check a few more times after a success
-  useEffect(() => {
-    if (returned !== "success") return;
-    const timers = [3000, 8000, 15000].map((ms) => setTimeout(() => setAttempt((n) => n + 1), ms));
-    return () => timers.forEach(clearTimeout);
-  }, [returned]);
 
   // Coming back with the browser's Back button restores this page from cache: unlock Pay and reload
   useEffect(() => {
@@ -223,19 +213,17 @@ export default function MyBookingsPage() {
     }
   };
 
-  // Starts a payment. Only the booking id is sent: the amount and currency are read from the database by the backend.
+  // Starts a Stripe Checkout. Only the booking id is sent: the amount and currency are read from the database by the
+  // backend. This page never marks anything as paid; the backend does that after Stripe confirms the payment.
   const startPayment = async (id: string) => {
     if (payingId) return; // one request at a time
     setPayingId(id);
     setPayError(null);
-    setReturned("");
 
     try {
-      const { gatewayUrl } = await callApi("/api/payments/initiate", { method: "POST", body: { bookingId: id }, forbiddenMessage });
-      if (typeof gatewayUrl !== "string" || !gatewayUrl.startsWith("https://")) {
-        throw new Error("Could not start the payment. Please try again.");
-      }
-      window.location.assign(gatewayUrl); // stay locked ("Redirecting...") while the browser leaves
+      const { url } = await callApi("/api/payments/create-checkout-session", { method: "POST", body: { bookingId: id }, forbiddenMessage });
+      if (!isStripeCheckoutUrl(url)) throw new Error("Could not start the payment. Please try again.");
+      window.location.assign(url); // stay locked ("Redirecting...") while the browser leaves
     } catch (err) {
       setPayError({ id, message: errorMessage(err) });
       setPayingId("");
@@ -270,19 +258,6 @@ export default function MyBookingsPage() {
   } else {
     content = (
       <>
-        {returned && (
-          <p
-            role="status"
-            className={`mb-6 rounded-lg p-4 text-sm font-medium ${returned === "success" ? "bg-teal-50 text-teal-800" : "bg-orange-50 text-orange-700"}`}
-          >
-            {returned === "success"
-              ? "You are back from the payment page. We are confirming your payment with the payment provider. A booking shows as Paid only once it is confirmed, which can take a moment."
-              : returned === "failed"
-                ? "The payment did not go through. Nothing was marked as paid. You can try again."
-                : "The payment was cancelled. Nothing was marked as paid."}
-          </p>
-        )}
-
         {counts && (
           <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-5" aria-label="Booking statistics">
             {[
@@ -382,12 +357,12 @@ export default function MyBookingsPage() {
                     </div>
                     <div>
                       <dt className="text-gray-500">Price</dt>
-                      <dd className="font-medium text-gray-900">{bdt(b.price)}</dd>
+                      <dd className="font-medium text-gray-900">{usd(b.price)}</dd>
                     </div>
                     {b.finalAmount !== undefined && (
                       <div>
                         <dt className="text-gray-500">Final amount</dt>
-                        <dd className="font-medium text-gray-900">{bdt(b.finalAmount)}</dd>
+                        <dd className="font-medium text-gray-900">{usd(b.finalAmount)}</dd>
                       </div>
                     )}
                     <div>

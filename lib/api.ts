@@ -3,6 +3,15 @@ import { API_URL } from "@/lib/data/services";
 
 export const SESSION_EXPIRED = "Your session has expired. Please sign in again.";
 
+// An error from the API that remembers the HTTP status (for example 402 = payment not completed yet)
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
 type Options = {
   method?: string;
   body?: object;
@@ -25,9 +34,9 @@ export async function callApi(path: string, { method = "GET", body, forbiddenMes
   const result = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    if (response.status === 401) throw new Error(SESSION_EXPIRED);
-    if (response.status === 403) throw new Error(forbiddenMessage ?? "You do not have access to this.");
-    throw new Error(result.message || "Something went wrong. Please try again.");
+    if (response.status === 401) throw new ApiError(SESSION_EXPIRED, 401);
+    if (response.status === 403) throw new ApiError(forbiddenMessage ?? "You do not have access to this.", 403);
+    throw new ApiError(result.message || "Something went wrong. Please try again.", response.status);
   }
   return result;
 }
