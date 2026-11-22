@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 // The Express API (Better Auth + REST). Same variable the app already uses as its API base URL.
-const apiUrl = process.env.NEXT_PUBLIC_BETTER_AUTH_URL ?? "http://localhost:8000";
+// Trailing slashes are stripped: "https://api//api/auth/..." makes Vercel answer 308 and the rewrite loops.
+const apiUrl = (process.env.NEXT_PUBLIC_BETTER_AUTH_URL ?? "http://localhost:8000").replace(/\/+$/, "");
 
 const nextConfig: NextConfig = {
   // Auth requests go to this site's own /api/auth and are forwarded to the API, so the session cookie belongs to
