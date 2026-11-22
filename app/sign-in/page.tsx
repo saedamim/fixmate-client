@@ -6,6 +6,14 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { safeRedirect, siteUrl, signIn } from "@/lib/auth-client";
 
+// Existing accounts shown as a hint on the Sign-in page. Emails only: passwords are never stored or shown here.
+const demoAccounts = [
+  { role: "Admin", email: "yeasminmem@gmail.com", badge: "bg-purple-50 text-purple-700" },
+  { role: "Customer", email: "bottoslay@gmail.com", badge: "bg-teal-50 text-teal-700" },
+  { role: "Technician", email: "ahsan@gmail.com", badge: "bg-orange-50 text-orange-600" },
+  { role: "Technician", email: "abdurrahim@gmail.com", badge: "bg-orange-50 text-orange-600" },
+];
+
 function SignInForm() {
   const router = useRouter();
 
@@ -73,7 +81,8 @@ function SignInForm() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#f7f8f8] px-4 py-10">
-      <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-7 shadow-sm sm:p-9">
+      <div className="grid w-full max-w-5xl items-start gap-6 lg:grid-cols-2">
+      <div className="w-full rounded-2xl border border-gray-200 bg-white p-7 shadow-sm sm:p-9">
 
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold text-gray-900">
@@ -175,6 +184,26 @@ function SignInForm() {
             Create Account
           </Link>
         </p>
+      </div>
+
+      <aside className="w-full rounded-2xl border border-gray-200 bg-white p-7 shadow-sm sm:p-9" aria-labelledby="demo-accounts">
+        <h2 id="demo-accounts" className="text-2xl font-bold text-gray-900">Demo Accounts</h2>
+        <p className="mt-2 text-sm text-gray-600">Existing FixMate accounts for each role. Select one to fill in the email.</p>
+        <ul className="mt-6 space-y-3">
+          {demoAccounts.map((account) => (
+            <li key={account.email}>
+              <button
+                type="button"
+                onClick={() => setEmail(account.email)}
+                className="w-full rounded-xl border border-gray-200 bg-[#f7f8f8] p-4 text-left transition hover:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-100"
+              >
+                <span className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${account.badge}`}>{account.role}</span>
+                <span className="mt-2 block break-all text-sm font-semibold text-gray-900">{account.email}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </aside>
       </div>
     </main>
   );
