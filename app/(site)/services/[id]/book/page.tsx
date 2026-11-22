@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import BookingForm from "@/components/site/BookingForm";
 import { categoryIcon, getServiceById } from "@/lib/data/services";
+import { bdt } from "@/lib/currency";
 
 // Booking page: the selected service summary and the booking form.
 // Signed-out visitors are sent to Sign In (and back here) by proxy.ts.
@@ -31,7 +32,7 @@ export default async function BookServicePage({ params }: { params: Promise<{ id
           <p className="mt-1 text-sm text-gray-600">
             {service.category} · {service.mode} · {service.technician}
           </p>
-          <p className="mt-1 text-lg font-bold text-gray-900">Starting at ${service.price}</p>
+          <p className="mt-1 text-lg font-bold text-gray-900">Starting at {bdt(service.price)}</p>
         </div>
       </div>
 

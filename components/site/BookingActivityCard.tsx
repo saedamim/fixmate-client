@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { BookingActivity } from "@/lib/data/services";
+import { bdt } from "@/lib/currency";
 
 const ROTATE_MS = 4500;
 const FADE_MS = 300;
@@ -71,7 +72,7 @@ export default function BookingActivityCard({ items }: { items: BookingActivity[
 
           <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-4">
             <p className="text-sm text-gray-600">
-              Price <span className="text-lg font-bold text-gray-900">${item.price}</span>
+              Price <span className="text-lg font-bold text-gray-900">{bdt(item.price)}</span>
             </p>
             <p className="text-sm font-medium text-teal-700">🛡️ {item.warranty}</p>
           </div>

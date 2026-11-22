@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
 import { callApi, errorMessage, SESSION_EXPIRED } from "@/lib/api";
 import { formatDate, statusLabel, statusStyle, type BookingStatus as Status } from "@/lib/bookings";
+import { bdt } from "@/lib/currency";
 
 type Booking = {
   id: string;
@@ -54,7 +55,10 @@ export default function MyBookingsPage() {
   const [confirming, setConfirming] = useState<Booking | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState("");
-  const [payNoticeId, setPayNoticeId] = useState(""); // booking whose Pay Now was clicked
+  // Payment: the booking being sent to the gateway, a per-booking error, and the outcome of a return from the gateway
+  const [payingId, setPayingId] = useState("");
+  const [payError, setPayError] = useState<{ id: string; message: string } | null>(null);
+  const [returned, setReturned] = useState<"success" | "failed" | "cancelled" | "">("");
   const dialogRef = useRef<HTMLDivElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const dialogOpen = confirming !== null;
@@ -92,6 +96,36 @@ export default function MyBookingsPage() {
       ignore = true;
     };
   }, [isCustomer, filter, page, attempt]);
+
+  // The gateway sends the customer back here with ?payment=success|failed|cancelled. That is only a redirect, so it
+  // never marks anything as paid: the list is reloaded and the backend (after SSLCommerz validation) is the only source.
+  useEffect(() => {
+    const outcome = new URLSearchParams(window.location.search).get("payment");
+    if (outcome !== "success" && outcome !== "failed" && outcome !== "cancelled") return;
+
+    window.history.replaceState(null, "", window.location.pathname); // so a refresh does not repeat the notice
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reading the URL once on arrival
+    setReturned(outcome);
+    setAttempt((n) => n + 1);
+  }, []);
+
+  // The payment provider confirms in the background, so check a few more times after a success
+  useEffect(() => {
+    if (returned !== "success") return;
+    const timers = [3000, 8000, 15000].map((ms) => setTimeout(() => setAttempt((n) => n + 1), ms));
+    return () => timers.forEach(clearTimeout);
+  }, [returned]);
+
+  // Coming back with the browser's Back button restores this page from cache: unlock Pay and reload
+  useEffect(() => {
+    const onShow = (e: PageTransitionEvent) => {
+      if (!e.persisted) return;
+      setPayingId("");
+      setAttempt((n) => n + 1);
+    };
+    window.addEventListener("pageshow", onShow);
+    return () => window.removeEventListener("pageshow", onShow);
+  }, []);
 
   // Dialog keyboard: Escape closes it, Tab stays inside it
   useEffect(() => {
@@ -189,6 +223,25 @@ export default function MyBookingsPage() {
     }
   };
 
+  // Starts a payment. Only the booking id is sent: the amount and currency are read from the database by the backend.
+  const startPayment = async (id: string) => {
+    if (payingId) return; // one request at a time
+    setPayingId(id);
+    setPayError(null);
+    setReturned("");
+
+    try {
+      const { gatewayUrl } = await callApi("/api/payments/initiate", { method: "POST", body: { bookingId: id }, forbiddenMessage });
+      if (typeof gatewayUrl !== "string" || !gatewayUrl.startsWith("https://")) {
+        throw new Error("Could not start the payment. Please try again.");
+      }
+      window.location.assign(gatewayUrl); // stay locked ("Redirecting...") while the browser leaves
+    } catch (err) {
+      setPayError({ id, message: errorMessage(err) });
+      setPayingId("");
+    }
+  };
+
   let content: React.ReactNode;
 
   if (isPending) {
@@ -217,6 +270,19 @@ export default function MyBookingsPage() {
   } else {
     content = (
       <>
+        {returned && (
+          <p
+            role="status"
+            className={`mb-6 rounded-lg p-4 text-sm font-medium ${returned === "success" ? "bg-teal-50 text-teal-800" : "bg-orange-50 text-orange-700"}`}
+          >
+            {returned === "success"
+              ? "You are back from the payment page. We are confirming your payment with the payment provider. A booking shows as Paid only once it is confirmed, which can take a moment."
+              : returned === "failed"
+                ? "The payment did not go through. Nothing was marked as paid. You can try again."
+                : "The payment was cancelled. Nothing was marked as paid."}
+          </p>
+        )}
+
         {counts && (
           <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-5" aria-label="Booking statistics">
             {[
@@ -316,12 +382,12 @@ export default function MyBookingsPage() {
                     </div>
                     <div>
                       <dt className="text-gray-500">Price</dt>
-                      <dd className="font-medium text-gray-900">${b.price}</dd>
+                      <dd className="font-medium text-gray-900">{bdt(b.price)}</dd>
                     </div>
                     {b.finalAmount !== undefined && (
                       <div>
                         <dt className="text-gray-500">Final amount</dt>
-                        <dd className="font-medium text-gray-900">${b.finalAmount}</dd>
+                        <dd className="font-medium text-gray-900">{bdt(b.finalAmount)}</dd>
                       </div>
                     )}
                     <div>
@@ -341,19 +407,18 @@ export default function MyBookingsPage() {
                     </button>
                   )}
 
-                  {/* Pay Now is only prepared: online payment is not built yet, so it sends nothing */}
+                  {/* Pay: only for completed bookings that are still unpaid. The backend decides the amount. */}
                   {b.status === "completed" && b.paymentStatus === "unpaid" && (
                     <div className="mt-5">
                       <button
-                        onClick={() => setPayNoticeId(b.id)}
-                        className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-600"
+                        onClick={() => startPayment(b.id)}
+                        disabled={payingId !== ""}
+                        className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        Pay Now
+                        {payingId === b.id ? "Redirecting to payment..." : "Pay Now"}
                       </button>
-                      {payNoticeId === b.id && (
-                        <p role="status" className="mt-3 rounded-lg bg-orange-50 p-3 text-sm font-medium text-orange-700">
-                          Online payment is not available yet. Nothing was charged.
-                        </p>
+                      {payError?.id === b.id && (
+                        <p role="alert" className="mt-3 rounded-lg bg-red-50 p-3 text-sm font-medium text-red-600">{payError.message}</p>
                       )}
                     </div>
                   )}

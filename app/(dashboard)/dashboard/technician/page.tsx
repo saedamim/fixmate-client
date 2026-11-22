@@ -319,7 +319,7 @@ export default function TechnicianDashboardPage() {
                         {completingId === r.id ? (
                           <div className="mt-5">
                             <label htmlFor={`amount-${r.id}`} className="mb-2 block text-sm font-semibold text-gray-800">
-                              Final amount ($)
+                              Final amount (৳)
                             </label>
                             <div className="flex flex-wrap gap-3">
                               <input
@@ -400,9 +400,14 @@ export default function TechnicianDashboardPage() {
           <p className="mt-2 text-gray-600">Manage the repair requests assigned to you.</p>
         </div>
         {isTechnician && (
-          <Link href="/dashboard/technician/services" className="rounded-lg border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-gray-800 transition hover:bg-gray-50">
-            Manage my services →
-          </Link>
+          <div className="flex flex-wrap gap-3">
+            <Link href="/dashboard/technician/my-services" className="rounded-lg border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-gray-800 transition hover:bg-gray-50">
+              My services
+            </Link>
+            <Link href="/dashboard/technician/add-service" className="rounded-lg bg-orange-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-orange-600">
+              + Add service
+            </Link>
+          </div>
         )}
       </div>
 
