@@ -9,6 +9,7 @@ import Avatar from "./Avatar";
 const links = [
   { href: "/", label: "Home" },
   { href: "/services", label: "Services" },
+  { href: "/about", label: "About" },
   { href: "/#how-it-works", label: "How it works" },
 ];
 
