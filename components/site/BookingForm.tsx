@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { authClient, useSession } from "@/lib/auth-client";
 import { API_URL, type ServiceMode } from "@/lib/data/services";
 
@@ -53,6 +54,7 @@ function apiErrorMessage(status: number, message?: string) {
 
 export default function BookingForm({ serviceId, mode }: { serviceId: string; mode: ServiceMode }) {
   const { data: session, isPending } = useSession();
+  const redirect = encodeURIComponent(usePathname()); // come back to this booking page after signing in
   const needsAddress = mode !== "In-shop";
 
   const [fields, setFields] = useState<Fields>(emptyFields);
@@ -124,10 +126,10 @@ export default function BookingForm({ serviceId, mode }: { serviceId: string; mo
       <div className="text-center">
         <p className="text-gray-700">Please sign in to book this service.</p>
         <div className="mt-5 flex flex-col justify-center gap-3 sm:flex-row">
-          <Link href="/sign-in" className="rounded-lg bg-orange-500 px-6 py-3 font-semibold text-white transition hover:bg-orange-600">
+          <Link href={`/sign-in?redirect=${redirect}`} className="rounded-lg bg-orange-500 px-6 py-3 font-semibold text-white transition hover:bg-orange-600">
             Sign in
           </Link>
-          <Link href="/sign-up" className="rounded-lg border border-gray-300 px-6 py-3 font-semibold text-gray-800 transition hover:bg-gray-50">
+          <Link href={`/sign-up?redirect=${redirect}`} className="rounded-lg border border-gray-300 px-6 py-3 font-semibold text-gray-800 transition hover:bg-gray-50">
             Create an account
           </Link>
         </div>
@@ -254,7 +256,7 @@ export default function BookingForm({ serviceId, mode }: { serviceId: string; mo
   }
 
   return (
-    <section id="booking" className="mx-auto mt-12 max-w-2xl scroll-mt-20 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+    <section className="mt-8 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
       <h2 className="mb-6 text-2xl font-bold text-gray-900">Book this service</h2>
       {content}
     </section>

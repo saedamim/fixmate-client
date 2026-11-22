@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import BookingForm from "@/components/site/BookingForm";
 import { categoryIcon, getServiceById, type ServiceMode } from "@/lib/data/services";
 
 const modeHelp: Record<ServiceMode, string> = {
@@ -59,12 +58,12 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
           </dl>
 
           {service.available ? (
-            <a
-              href="#booking"
+            <Link
+              href={`/services/${service.id}/book`}
               className="mt-6 block rounded-lg bg-orange-500 px-6 py-3 text-center text-lg font-semibold text-white transition hover:bg-orange-600"
             >
               Book This Service
-            </a>
+            </Link>
           ) : (
             <p className="mt-6 rounded-lg bg-gray-100 px-6 py-3 text-center font-semibold text-gray-600">
               Currently unavailable
@@ -73,7 +72,6 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
         </div>
       </div>
 
-      {service.available && <BookingForm serviceId={service.id} mode={service.mode} />}
     </main>
   );
 }

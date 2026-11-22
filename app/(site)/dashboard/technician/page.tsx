@@ -394,8 +394,17 @@ export default function TechnicianDashboardPage() {
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10">
-      <h1 className="text-3xl font-bold text-gray-900">Technician Dashboard</h1>
-      <p className="mt-2 mb-8 text-gray-600">Manage the repair requests assigned to you.</p>
+      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Technician Dashboard</h1>
+          <p className="mt-2 text-gray-600">Manage the repair requests assigned to you.</p>
+        </div>
+        {isTechnician && (
+          <Link href="/dashboard/technician/services" className="rounded-lg border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-gray-800 transition hover:bg-gray-50">
+            Manage my services →
+          </Link>
+        )}
+      </div>
 
       {content}
     </main>
