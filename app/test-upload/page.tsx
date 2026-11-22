@@ -2,6 +2,7 @@
 "use client";
 
 import { useState } from "react";
+import { API_URL } from "@/lib/data/services";
 
 export default function TestUploadPage() {
   const [image, setImage] = useState<File | null>(null);
@@ -18,7 +19,7 @@ export default function TestUploadPage() {
 
     try {
       const response = await fetch(
-        "http://localhost:8000/api/upload/image",
+        `${API_URL}/api/upload/image`,
         {
           method: "POST",
           body: formData,

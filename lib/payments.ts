@@ -1,5 +1,4 @@
-// Payment record fields and labels shared by the customer Payment History and the admin Transactions page.
-// A payment is "paid" only when the backend has confirmed it with Stripe; the client never decides that.
+
 export type PaymentStatus = "pending" | "paid" | "failed" | "cancelled";
 
 export const paymentStatusOptions: { value: string; label: string }[] = [
@@ -24,7 +23,6 @@ export const paymentStatusStyle: Record<PaymentStatus, string> = {
   cancelled: "bg-gray-100 text-gray-600",
 };
 
-// A payment from GET /api/payments/my (Stripe Checkout, USD)
 export type Payment = {
   id: string;
   bookingId: string;
@@ -38,7 +36,7 @@ export type Payment = {
   paidAt: string | null;
 };
 
-// A transaction from GET /api/admin/transactions: the same record plus who paid, who was paid and review fields
+
 export type Transaction = Omit<Payment, "provider"> & {
   provider?: string;
   stripeSessionId?: string | null;
@@ -53,5 +51,5 @@ export type Transaction = Omit<Payment, "provider"> & {
 export const formatDateTime = (iso: string) =>
   new Date(iso).toLocaleString("en-US", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
 
-// A short reference for a booking id, so the full database id is not shown
+
 export const shortId = (id: string) => id.slice(-6).toUpperCase();
