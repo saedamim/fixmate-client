@@ -1,13 +1,18 @@
 
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { signUp, signIn } from "@/lib/auth-client";
+import { useRouter, useSearchParams } from "next/navigation";
+import { safeRedirect, signUp, signIn } from "@/lib/auth-client";
 
-export default function SignUpPage() {
+function SignUpForm() {
   const router = useRouter();
+
+  // ?redirect=/some/path is where the user was heading before being asked to sign up
+  const params = useSearchParams();
+  const redirect = safeRedirect(params.get("redirect"));
+  const redirectQuery = redirect === "/" ? "" : `?redirect=${encodeURIComponent(redirect)}`;
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -40,7 +45,7 @@ export default function SignUpPage() {
         return;
       }
 
-      router.push("/");
+      router.push(redirect);
       router.refresh();
     } catch {
       setError("Something went wrong. Please try again.");
@@ -57,7 +62,7 @@ export default function SignUpPage() {
 
       const { error } = await signIn.social({
         provider: "google",
-        callbackURL: "/",
+        callbackURL: redirect,
       });
 
       if (error) {
@@ -202,7 +207,7 @@ export default function SignUpPage() {
         <p className="mt-6 text-center text-sm font-medium text-gray-700">
           Already have an account?{" "}
           <Link
-            href="/sign-in"
+            href={`/sign-in${redirectQuery}`}
             className="font-semibold text-teal-700 hover:text-teal-800"
           >
             Sign In
@@ -215,3 +220,12 @@ export default function SignUpPage() {
 }
 
 
+
+// useSearchParams needs a Suspense boundary
+export default function SignUpPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignUpForm />
+    </Suspense>
+  );
+}

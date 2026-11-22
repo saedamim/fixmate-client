@@ -3,10 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
+import { callApi, errorMessage, SESSION_EXPIRED } from "@/lib/api";
+import { formatDate, statusLabel, statusStyle, type BookingStatus as Status } from "@/lib/bookings";
 
-type Status = "pending" | "accepted" | "in_progress" | "completed" | "rejected";
-
-// Same shape the booking API will return, so real data can replace the sample later
 type Request = {
   id: string;
   customerName: string;
@@ -14,84 +13,96 @@ type Request = {
   preferredDate: string; // YYYY-MM-DD
   preferredTime: string;
   phone: string;
-  address: string;
+  address: string; // empty for In-shop services
   problemDescription: string;
+  price: number;
   status: Status;
 };
 
-// ---------------------------------------------------------------------------
-// TEMPORARY SAMPLE DATA: not from the database.
-// To use real data, change loadRequests() to fetch from the API.
-// ---------------------------------------------------------------------------
-const sampleRequests: Request[] = [
-  { id: "s1", customerName: "Sample Customer A", serviceTitle: "AC Repair & Servicing", preferredDate: "2026-12-02", preferredTime: "09:00-12:00", phone: "+880 1700-000001", address: "House 12, Road 4, Dhanmondi, Dhaka", problemDescription: "The AC turns on but does not cool the room.", status: "pending" },
-  { id: "s2", customerName: "Sample Customer B", serviceTitle: "Washing Machine Repair", preferredDate: "2026-12-03", preferredTime: "12:00-15:00", phone: "+880 1700-000002", address: "Flat 5B, Green Road, Dhaka", problemDescription: "Water does not drain after the wash cycle.", status: "pending" },
-  { id: "s3", customerName: "Sample Customer C", serviceTitle: "Refrigerator Repair", preferredDate: "2026-12-04", preferredTime: "15:00-18:00", phone: "+880 1700-000003", address: "House 8, Sector 7, Uttara, Dhaka", problemDescription: "The fridge makes a loud noise and the freezer is warm.", status: "accepted" },
-  { id: "s4", customerName: "Sample Customer D", serviceTitle: "TV Screen Repair", preferredDate: "2026-12-01", preferredTime: "12:00-15:00", phone: "+880 1700-000004", address: "Flat 3A, Mirpur 10, Dhaka", problemDescription: "Vertical lines appear on the screen.", status: "in_progress" },
-  { id: "s5", customerName: "Sample Customer E", serviceTitle: "Microwave Oven Repair", preferredDate: "2026-11-28", preferredTime: "09:00-12:00", phone: "+880 1700-000005", address: "House 21, Banani, Dhaka", problemDescription: "The microwave runs but does not heat the food.", status: "completed" },
-  { id: "s6", customerName: "Sample Customer F", serviceTitle: "Laptop Repair", preferredDate: "2026-11-30", preferredTime: "15:00-18:00", phone: "+880 1700-000006", address: "Flat 9C, Gulshan 2, Dhaka", problemDescription: "The laptop will not charge, even with a new charger.", status: "rejected" },
-];
-
-// Pretend API call. Replace the body with a real fetch later.
-function loadRequests(): Promise<Request[]> {
-  return new Promise((resolve) => setTimeout(() => resolve(sampleRequests), 600));
-}
+// Sent by GET /api/bookings/technician: counts cover all of this technician's bookings
+type Counts = Record<Status | "total", number>;
 
 const filters: { value: "all" | Status; label: string }[] = [
   { value: "all", label: "All" },
-  { value: "pending", label: "Pending" },
+  { value: "requested", label: "Pending" },
   { value: "accepted", label: "Accepted" },
   { value: "in_progress", label: "In Progress" },
   { value: "completed", label: "Completed" },
   { value: "rejected", label: "Rejected" },
+  { value: "cancelled", label: "Cancelled" },
 ];
 
-const statusLabel = Object.fromEntries(filters.map((f) => [f.value, f.label]));
+const forbiddenMessage = "Only technician accounts can view this dashboard.";
 
-const statusStyle: Record<Status, string> = {
-  pending: "bg-orange-50 text-orange-600",
-  accepted: "bg-teal-50 text-teal-700",
-  in_progress: "bg-sky-50 text-sky-700",
-  completed: "bg-green-50 text-green-700",
-  rejected: "bg-red-50 text-red-600",
-};
-
-const formatDate = (date: string) =>
-  new Date(`${date}T00:00:00`).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" });
-
-const actionClass = "rounded-lg px-4 py-2 text-sm font-semibold transition";
+const actionClass = "rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60";
+const buttonClass =
+  "rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-800 transition hover:bg-gray-50";
 
 export default function TechnicianDashboardPage() {
   const { data: session, isPending } = useSession();
   const isTechnician = session?.user.role === "technician";
 
-  const [requests, setRequests] = useState<Request[]>([]);
   const [filter, setFilter] = useState<"all" | Status>("all");
+  const [page, setPage] = useState(1);
+  const [attempt, setAttempt] = useState(0); // changes to reload the list
+  const [requests, setRequests] = useState<Request[]>([]);
+  const [counts, setCounts] = useState<Counts | null>(null);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [attempt, setAttempt] = useState(0); // changes to reload after an error
 
+  const [busyId, setBusyId] = useState(""); // booking with an action in progress
+  const [actionError, setActionError] = useState<{ id: string; message: string } | null>(null);
+  const [completingId, setCompletingId] = useState(""); // booking showing the final amount form
+  const [amount, setAmount] = useState("");
+
+  // Load this technician's bookings whenever the filter or page changes
   useEffect(() => {
     if (!isTechnician) return;
 
     let ignore = false;
-    loadRequests()
-      .then((data) => {
+    const query = new URLSearchParams({ page: String(page), limit: "9" });
+    if (filter !== "all") query.set("status", filter);
+
+    callApi(`/api/bookings/technician?${query}`, { forbiddenMessage })
+      .then((result) => {
         if (ignore) return;
-        setRequests(data);
+        // The current page no longer exists (for example after a status change): go to the last page
+        if (result.bookings.length === 0 && page > 1) {
+          setPage(result.totalPages || 1);
+          return;
+        }
+        setRequests(result.bookings);
+        setCounts(result.counts);
+        setTotal(result.total);
+        setTotalPages(result.totalPages);
         setError("");
         setLoading(false);
       })
-      .catch(() => {
+      .catch((err) => {
         if (ignore) return;
-        setError("Could not load your requests. Please try again.");
+        setError(errorMessage(err));
         setLoading(false);
       });
 
     return () => {
       ignore = true;
     };
-  }, [isTechnician, attempt]);
+  }, [isTechnician, filter, page, attempt]);
+
+  const selectFilter = (value: "all" | Status) => {
+    if (value === filter && page === 1) return; // already showing this list
+    setFilter(value);
+    setPage(1);
+    setLoading(true);
+    setError("");
+  };
+
+  const goToPage = (value: number) => {
+    setPage(value);
+    setLoading(true);
+  };
 
   const retry = () => {
     setLoading(true);
@@ -99,18 +110,52 @@ export default function TechnicianDashboardPage() {
     setAttempt((n) => n + 1);
   };
 
-  // Changes the status on this page only. Nothing is saved yet.
-  const setStatus = (id: string, status: Status) =>
-    setRequests((list) => list.map((r) => (r.id === id ? { ...r, status } : r)));
+  const openComplete = (request: Request) => {
+    setActionError(null);
+    setCompletingId(request.id);
+    setAmount(String(request.price));
+  };
 
-  const count = (status: Status) => requests.filter((r) => r.status === status).length;
-  const visible = filter === "all" ? requests : requests.filter((r) => r.status === filter);
+  // Sends the new status to the API, then refreshes the list and counts
+  const updateStatus = async (id: string, status: Status, finalAmount?: number) => {
+    try {
+      setBusyId(id);
+      setActionError(null);
+
+      const { booking } = await callApi(`/api/bookings/technician/${id}/status`, {
+        method: "PATCH",
+        body: { status, ...(finalAmount !== undefined && { finalAmount }) },
+        forbiddenMessage,
+      });
+
+      // Show the change straight away; drop the card if it no longer matches the filter
+      setRequests((list) =>
+        filter === "all" ? list.map((r) => (r.id === id ? booking : r)) : list.filter((r) => r.id !== id)
+      );
+      setCompletingId("");
+      setAttempt((n) => n + 1); // quiet reload so counts and pages are correct
+    } catch (err) {
+      setActionError({ id, message: errorMessage(err) });
+    } finally {
+      setBusyId("");
+    }
+  };
+
+  const confirmComplete = (id: string) => {
+    const finalAmount = Number(amount);
+    if (!amount.trim() || !Number.isFinite(finalAmount) || finalAmount <= 0) {
+      setActionError({ id, message: "Enter a final amount greater than 0." });
+      return;
+    }
+    updateStatus(id, "completed", finalAmount);
+  };
 
   const summary = [
-    { label: "Total Requests", value: requests.length, style: "text-gray-900" },
-    { label: "Pending", value: count("pending"), style: "text-orange-600" },
-    { label: "In Progress", value: count("in_progress"), style: "text-sky-700" },
-    { label: "Completed", value: count("completed"), style: "text-green-700" },
+    { label: "Total Requests", value: counts?.total ?? 0, style: "text-gray-900" },
+    { label: "Pending", value: counts?.requested ?? 0, style: "text-orange-600" },
+    { label: "Accepted", value: counts?.accepted ?? 0, style: "text-teal-700" },
+    { label: "In Progress", value: counts?.in_progress ?? 0, style: "text-sky-700" },
+    { label: "Completed", value: counts?.completed ?? 0, style: "text-green-700" },
   ];
 
   let content: React.ReactNode;
@@ -148,14 +193,11 @@ export default function TechnicianDashboardPage() {
           <span className="mt-3 inline-block rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-700">Technician</span>
         </section>
 
-        <p role="note" className="mt-4 rounded-lg bg-orange-50 px-4 py-3 text-sm font-medium text-orange-700">
-          Sample data: these requests are temporary examples. The buttons only change this page and nothing is saved yet.
-        </p>
-
-        {loading ? (
+        {/* The first load has no counts yet, so show the skeleton; later reloads keep the page steady */}
+        {loading && !counts ? (
           <div className="mt-6" aria-busy="true">
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-              {[1, 2, 3, 4].map((n) => (
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+              {[1, 2, 3, 4, 5].map((n) => (
                 <div key={n} className="h-24 animate-pulse rounded-2xl bg-gray-200" />
               ))}
             </div>
@@ -165,17 +207,22 @@ export default function TechnicianDashboardPage() {
               ))}
             </div>
           </div>
-        ) : error ? (
+        ) : error && !counts ? (
           <div role="alert" className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
             <p className="font-medium text-red-600">{error}</p>
-            <button onClick={retry} className="mt-4 rounded-lg bg-orange-500 px-5 py-2 font-semibold text-white transition hover:bg-orange-600">
-              Try again
-            </button>
+            <div className="mt-4 flex justify-center gap-3">
+              <button onClick={retry} className="rounded-lg bg-orange-500 px-5 py-2 font-semibold text-white transition hover:bg-orange-600">
+                Try again
+              </button>
+              {error === SESSION_EXPIRED && (
+                <Link href="/sign-in?redirect=/dashboard/technician" className={buttonClass}>Sign in</Link>
+              )}
+            </div>
           </div>
         ) : (
           <>
             {/* Summary cards */}
-            <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-5">
               {summary.map((s) => (
                 <div key={s.label} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
                   <p className="text-sm text-gray-600">{s.label}</p>
@@ -190,7 +237,7 @@ export default function TechnicianDashboardPage() {
                 <button
                   key={f.value}
                   type="button"
-                  onClick={() => setFilter(f.value)}
+                  onClick={() => selectFilter(f.value)}
                   aria-pressed={filter === f.value}
                   className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition ${
                     filter === f.value
@@ -198,76 +245,146 @@ export default function TechnicianDashboardPage() {
                       : "border-gray-300 bg-white text-gray-800 hover:bg-gray-50"
                   }`}
                 >
-                  {f.label} ({f.value === "all" ? requests.length : count(f.value)})
+                  {f.label} ({counts?.[f.value === "all" ? "total" : f.value] ?? 0})
                 </button>
               ))}
             </div>
 
             {/* Request list */}
-            {visible.length === 0 ? (
-              <div className="mt-6 rounded-2xl border border-dashed border-gray-300 p-10 text-center text-gray-600">
+            {loading ? (
+              <div className="mt-4 grid gap-4 md:grid-cols-2" aria-busy="true">
+                {[1, 2, 3, 4].map((n) => (
+                  <div key={n} className="h-60 animate-pulse rounded-2xl bg-gray-200" />
+                ))}
+              </div>
+            ) : error ? (
+              <div role="alert" className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
+                <p className="font-medium text-red-600">{error}</p>
+                <div className="mt-4 flex justify-center gap-3">
+                  <button onClick={retry} className="rounded-lg bg-orange-500 px-5 py-2 font-semibold text-white transition hover:bg-orange-600">
+                    Try again
+                  </button>
+                  {error === SESSION_EXPIRED && (
+                    <Link href="/sign-in?redirect=/dashboard/technician" className={buttonClass}>Sign in</Link>
+                  )}
+                </div>
+              </div>
+            ) : requests.length === 0 ? (
+              <div className="mt-4 rounded-2xl border border-dashed border-gray-300 p-10 text-center text-gray-600">
                 {filter === "all" ? "You have no requests yet." : `You have no ${statusLabel[filter].toLowerCase()} requests.`}
               </div>
             ) : (
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                {visible.map((r) => (
-                  <article key={r.id} className="flex flex-col rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h3 className="font-semibold text-gray-900">{r.serviceTitle}</h3>
-                        <p className="mt-1 text-sm text-gray-600">{r.customerName}</p>
-                      </div>
-                      <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${statusStyle[r.status]}`}>
-                        {statusLabel[r.status]}
-                      </span>
-                    </div>
+              <>
+                <p className="mt-4 text-sm text-gray-600">
+                  {total} {total === 1 ? "request" : "requests"}
+                </p>
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  {requests.map((r) => {
+                    const busy = busyId === r.id;
+                    return (
+                      <article key={r.id} className="flex flex-col rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <h3 className="font-semibold text-gray-900">{r.serviceTitle}</h3>
+                            <p className="mt-1 text-sm text-gray-600">{r.customerName}</p>
+                          </div>
+                          <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${statusStyle[r.status]}`}>
+                            {statusLabel[r.status]}
+                          </span>
+                        </div>
 
-                    <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
-                      <div>
-                        <dt className="text-gray-500">Date</dt>
-                        <dd className="font-medium text-gray-900">{formatDate(r.preferredDate)}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-gray-500">Time</dt>
-                        <dd className="font-medium text-gray-900">{r.preferredTime}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-gray-500">Phone</dt>
-                        <dd className="font-medium text-gray-900">{r.phone}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-gray-500">Address</dt>
-                        <dd className="font-medium text-gray-900">{r.address}</dd>
-                      </div>
-                      <div className="col-span-2">
-                        <dt className="text-gray-500">Problem</dt>
-                        <dd className="font-medium text-gray-900">{r.problemDescription}</dd>
-                      </div>
-                    </dl>
+                        <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                          <div>
+                            <dt className="text-gray-500">Date</dt>
+                            <dd className="font-medium text-gray-900">{formatDate(r.preferredDate)}</dd>
+                          </div>
+                          <div>
+                            <dt className="text-gray-500">Time</dt>
+                            <dd className="font-medium text-gray-900">{r.preferredTime}</dd>
+                          </div>
+                          <div>
+                            <dt className="text-gray-500">Phone</dt>
+                            <dd className="font-medium text-gray-900">{r.phone}</dd>
+                          </div>
+                          <div>
+                            <dt className="text-gray-500">Address</dt>
+                            <dd className="font-medium text-gray-900">{r.address || "In-shop (no address)"}</dd>
+                          </div>
+                          <div className="col-span-2">
+                            <dt className="text-gray-500">Problem</dt>
+                            <dd className="font-medium text-gray-900">{r.problemDescription}</dd>
+                          </div>
+                        </dl>
 
-                    {r.status === "pending" && (
-                      <div className="mt-5 flex gap-3">
-                        <button onClick={() => setStatus(r.id, "accepted")} className={`${actionClass} bg-teal-700 text-white hover:bg-teal-800`}>
-                          Accept
-                        </button>
-                        <button onClick={() => setStatus(r.id, "rejected")} className={`${actionClass} border border-red-300 text-red-600 hover:bg-red-50`}>
-                          Reject
-                        </button>
-                      </div>
-                    )}
-                    {r.status === "accepted" && (
-                      <button onClick={() => setStatus(r.id, "in_progress")} className={`${actionClass} mt-5 self-start bg-orange-500 text-white hover:bg-orange-600`}>
-                        Start Repair
-                      </button>
-                    )}
-                    {r.status === "in_progress" && (
-                      <button onClick={() => setStatus(r.id, "completed")} className={`${actionClass} mt-5 self-start bg-green-600 text-white hover:bg-green-700`}>
-                        Mark as Completed
-                      </button>
-                    )}
-                  </article>
-                ))}
-              </div>
+                        {completingId === r.id ? (
+                          <div className="mt-5">
+                            <label htmlFor={`amount-${r.id}`} className="mb-2 block text-sm font-semibold text-gray-800">
+                              Final amount ($)
+                            </label>
+                            <div className="flex flex-wrap gap-3">
+                              <input
+                                id={`amount-${r.id}`}
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={amount}
+                                onChange={(e) => setAmount(e.target.value)}
+                                disabled={busy}
+                                className="w-32 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                              />
+                              <button onClick={() => confirmComplete(r.id)} disabled={busy} className={`${actionClass} bg-green-600 text-white hover:bg-green-700`}>
+                                {busy ? "Saving..." : "Confirm"}
+                              </button>
+                              <button onClick={() => setCompletingId("")} disabled={busy} className={`${buttonClass} disabled:opacity-60`}>
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            {r.status === "requested" && (
+                              <div className="mt-5 flex gap-3">
+                                <button onClick={() => updateStatus(r.id, "accepted")} disabled={busy} className={`${actionClass} bg-teal-700 text-white hover:bg-teal-800`}>
+                                  Accept
+                                </button>
+                                <button onClick={() => updateStatus(r.id, "rejected")} disabled={busy} className={`${actionClass} border border-red-300 text-red-600 hover:bg-red-50`}>
+                                  Reject
+                                </button>
+                              </div>
+                            )}
+                            {r.status === "accepted" && (
+                              <button onClick={() => updateStatus(r.id, "in_progress")} disabled={busy} className={`${actionClass} mt-5 self-start bg-orange-500 text-white hover:bg-orange-600`}>
+                                Start Work
+                              </button>
+                            )}
+                            {r.status === "in_progress" && (
+                              <button onClick={() => openComplete(r)} disabled={busy} className={`${actionClass} mt-5 self-start bg-green-600 text-white hover:bg-green-700`}>
+                                Complete Work
+                              </button>
+                            )}
+                          </>
+                        )}
+
+                        {actionError?.id === r.id && (
+                          <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm font-medium text-red-600">{actionError.message}</p>
+                        )}
+                      </article>
+                    );
+                  })}
+                </div>
+
+                {totalPages > 1 && (
+                  <nav aria-label="Pagination" className="mt-8 flex items-center justify-center gap-4">
+                    <button onClick={() => goToPage(page - 1)} disabled={page <= 1} className={`${buttonClass} disabled:pointer-events-none disabled:opacity-40`}>
+                      ← Previous
+                    </button>
+                    <span className="text-sm text-gray-600">Page {page} of {totalPages}</span>
+                    <button onClick={() => goToPage(page + 1)} disabled={page >= totalPages} className={`${buttonClass} disabled:pointer-events-none disabled:opacity-40`}>
+                      Next →
+                    </button>
+                  </nav>
+                )}
+              </>
             )}
           </>
         )}

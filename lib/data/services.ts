@@ -1,8 +1,4 @@
-// ---------------------------------------------------------------------------
-// Services (Home, Services list, Details pages) are loaded from the backend API.
-// `getRecentActivity` still returns SAMPLE DATA – replace its body with an API call
-// when the backend has an endpoint for it.
-// ---------------------------------------------------------------------------
+
 
 export type ServiceMode = "On-site" | "In-shop" | "Pickup & Drop";
 
@@ -34,8 +30,8 @@ export const categories = [
 export const categoryIcon = (name: string) =>
   categories.find((c) => c.name === name)?.icon ?? "🔧";
 
-// Backend base URL (same server as auth). The /api/services endpoint returns
-// approved services as { services, total, page, limit, totalPages }.
+
+
 export const API_URL = process.env.NEXT_PUBLIC_BETTER_AUTH_URL ?? "http://localhost:8000";
 
 export type ServiceFilters = {
@@ -54,11 +50,7 @@ export type ServicesResult = {
   totalPages: number;
 };
 
-/**
- * Approved services from the backend API (GET /api/services).
- * Search, category, mode, sort and pagination are handled by the API.
- * Throws if the API cannot be reached or responds with an error.
- */
+
 export async function getServices(filters: ServiceFilters = {}): Promise<ServicesResult> {
   const query = new URLSearchParams();
   for (const [key, value] of Object.entries(filters)) {
@@ -71,11 +63,7 @@ export async function getServices(filters: ServiceFilters = {}): Promise<Service
   return response.json();
 }
 
-/**
- * One approved service by id (GET /api/services/:id).
- * Returns null when the API says 404 (unknown id or not approved).
- * Throws on any other failure so the error page is shown.
- */
+
 export async function getServiceById(id: string): Promise<Service | null> {
   const response = await fetch(`${API_URL}/api/services/${encodeURIComponent(id)}`);
   if (response.status === 404) return null;
@@ -84,11 +72,7 @@ export async function getServiceById(id: string): Promise<Service | null> {
   return response.json();
 }
 
-/**
- * 6 latest available, featured services for the Home page.
- * The API has no `featured` filter, so it returns approved services (newest
- * first, max 50 per request) and the featured ones are picked here.
- */
+
 export async function getFeaturedServices(): Promise<Service[]> {
   const { services } = await getServices({ limit: 50 });
 
@@ -105,8 +89,7 @@ export type BookingActivity = {
   warranty: string;
 };
 
-// SAMPLE ACTIVITY – fictional names, NOT real bookings. Replace with an API call
-// (e.g. recent bookings from the backend) when it is ready.
+
 export async function getRecentActivity(): Promise<BookingActivity[]> {
   return [
     { id: "a1", service: "AC Repair & Gas Refill", customer: "Sample Customer A", location: "Dhanmondi, Dhaka", status: "Completed", price: 45, warranty: "30-day warranty" },

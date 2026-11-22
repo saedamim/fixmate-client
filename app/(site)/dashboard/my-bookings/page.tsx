@@ -2,10 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { authClient, useSession } from "@/lib/auth-client";
-import { API_URL } from "@/lib/data/services";
-
-type Status = "pending" | "accepted" | "in_progress" | "completed" | "cancelled" | "rejected";
+import { useSession } from "@/lib/auth-client";
+import { callApi, errorMessage, SESSION_EXPIRED } from "@/lib/api";
+import { formatDate, statusLabel, statusStyle, type BookingStatus as Status } from "@/lib/bookings";
 
 type Booking = {
   id: string;
@@ -16,12 +15,16 @@ type Booking = {
   preferredDate: string;
   preferredTime: string;
   status: Status;
-  paymentStatus: string;
+  paymentStatus: string; // "unpaid" for now; payment is not built yet
+  finalAmount?: number; // set by the technician when the work is completed
 };
+
+// Sent by GET /api/bookings/my: counts cover all of this customer's bookings
+type Counts = Record<Status | "total", number>;
 
 const filters: { value: "all" | Status; label: string }[] = [
   { value: "all", label: "All" },
-  { value: "pending", label: "Pending" },
+  { value: "requested", label: "Pending" },
   { value: "accepted", label: "Accepted" },
   { value: "in_progress", label: "In Progress" },
   { value: "completed", label: "Completed" },
@@ -29,48 +32,7 @@ const filters: { value: "all" | Status; label: string }[] = [
   { value: "rejected", label: "Rejected" },
 ];
 
-const statusLabel = Object.fromEntries(filters.map((f) => [f.value, f.label]));
-
-const statusStyle: Record<Status, string> = {
-  pending: "bg-orange-50 text-orange-600",
-  accepted: "bg-teal-50 text-teal-700",
-  in_progress: "bg-sky-50 text-sky-700",
-  completed: "bg-green-50 text-green-700",
-  cancelled: "bg-gray-100 text-gray-600",
-  rejected: "bg-red-50 text-red-600",
-};
-
-const SESSION_EXPIRED = "Your session has expired. Please sign in again.";
-
-// Calls the API with a fresh short-lived JWT (never stored). Throws an Error with a message to show the user.
-async function callApi(path: string, method = "GET") {
-  const { data, error } = await authClient.token();
-  if (error || !data?.token) throw new Error(SESSION_EXPIRED);
-
-  const response = await fetch(`${API_URL}${path}`, {
-    method,
-    headers: { Authorization: `Bearer ${data.token}` },
-  });
-  const result = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    if (response.status === 401) throw new Error(SESSION_EXPIRED);
-    if (response.status === 403) throw new Error("Only customer accounts can view bookings.");
-    throw new Error(result.message || "Something went wrong. Please try again.");
-  }
-  return result;
-}
-
-// fetch() throws a TypeError when the server cannot be reached
-const errorMessage = (error: unknown) =>
-  error instanceof TypeError
-    ? "Could not reach the server. Please try again."
-    : error instanceof Error
-      ? error.message
-      : "Something went wrong. Please try again.";
-
-const formatDate = (date: string) =>
-  new Date(`${date}T00:00:00`).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" });
+const forbiddenMessage = "Only customer accounts can view bookings.";
 
 const buttonClass =
   "rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-800 transition hover:bg-gray-50";
@@ -83,6 +45,7 @@ export default function MyBookingsPage() {
   const [page, setPage] = useState(1);
   const [attempt, setAttempt] = useState(0); // changes to reload after an error
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [counts, setCounts] = useState<Counts | null>(null);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -91,6 +54,7 @@ export default function MyBookingsPage() {
   const [confirming, setConfirming] = useState<Booking | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState("");
+  const [payNoticeId, setPayNoticeId] = useState(""); // booking whose Pay Now was clicked
   const dialogRef = useRef<HTMLDivElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const dialogOpen = confirming !== null;
@@ -103,7 +67,7 @@ export default function MyBookingsPage() {
     const query = new URLSearchParams({ page: String(page), limit: "9" });
     if (filter !== "all") query.set("status", filter);
 
-    callApi(`/api/bookings/my?${query}`)
+    callApi(`/api/bookings/my?${query}`, { forbiddenMessage })
       .then((result) => {
         if (ignore) return;
         // The current page no longer exists (for example after a cancel): go to the last page
@@ -112,6 +76,7 @@ export default function MyBookingsPage() {
           return;
         }
         setBookings(result.bookings);
+        setCounts(result.counts);
         setTotal(result.total);
         setTotalPages(result.totalPages);
         setError("");
@@ -205,18 +170,17 @@ export default function MyBookingsPage() {
       setCancelling(true);
       setCancelError("");
 
-      const { booking } = await callApi(`/api/bookings/${confirming.id}/cancel`, "PATCH");
+      const { booking } = await callApi(`/api/bookings/${confirming.id}/cancel`, { method: "PATCH", forbiddenMessage });
 
       if (filter === "all") {
         // Same list, same page count: just update the card
         setBookings((list) => list.map((b) => (b.id === booking.id ? booking : b)));
       } else {
-        // The booking no longer matches this filter: remove it, then reload quietly
-        // so the page fills up again and the page count is correct
+        // The booking no longer matches this filter: remove it
         setBookings((list) => list.filter((b) => b.id !== booking.id));
         setTotal((n) => n - 1);
-        setAttempt((n) => n + 1);
       }
+      setAttempt((n) => n + 1); // quiet reload so the stats, page count and page contents are correct
       setConfirming(null);
     } catch (err) {
       setCancelError(errorMessage(err));
@@ -253,6 +217,23 @@ export default function MyBookingsPage() {
   } else {
     content = (
       <>
+        {counts && (
+          <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-5" aria-label="Booking statistics">
+            {[
+              { label: "Total Bookings", value: counts.total, style: "text-gray-900" },
+              { label: "Pending", value: counts.requested, style: "text-orange-600" },
+              { label: "Accepted", value: counts.accepted, style: "text-teal-700" },
+              { label: "In Progress", value: counts.in_progress, style: "text-sky-700" },
+              { label: "Completed", value: counts.completed, style: "text-green-700" },
+            ].map((s) => (
+              <div key={s.label} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                <p className="text-sm text-gray-600">{s.label}</p>
+                <p className={`mt-1 text-3xl font-bold ${s.style}`}>{s.value}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="flex gap-2 overflow-x-auto pb-2" role="group" aria-label="Filter by status">
           {filters.map((f) => (
             <button
@@ -337,19 +318,44 @@ export default function MyBookingsPage() {
                       <dt className="text-gray-500">Price</dt>
                       <dd className="font-medium text-gray-900">${b.price}</dd>
                     </div>
+                    {b.finalAmount !== undefined && (
+                      <div>
+                        <dt className="text-gray-500">Final amount</dt>
+                        <dd className="font-medium text-gray-900">${b.finalAmount}</dd>
+                      </div>
+                    )}
                     <div>
                       <dt className="text-gray-500">Payment</dt>
-                      <dd className="font-medium capitalize text-gray-900">{b.paymentStatus}</dd>
+                      <dd className={`font-medium capitalize ${b.paymentStatus === "paid" ? "text-green-700" : "text-gray-900"}`}>
+                        {b.paymentStatus}
+                      </dd>
                     </div>
                   </dl>
 
-                  {b.status === "pending" && (
+                  {b.status === "requested" && (
                     <button
                       onClick={() => openConfirm(b)}
                       className="mt-5 self-start rounded-lg border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50"
                     >
                       Cancel booking
                     </button>
+                  )}
+
+                  {/* Pay Now is only prepared: online payment is not built yet, so it sends nothing */}
+                  {b.status === "completed" && b.paymentStatus === "unpaid" && (
+                    <div className="mt-5">
+                      <button
+                        onClick={() => setPayNoticeId(b.id)}
+                        className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-600"
+                      >
+                        Pay Now
+                      </button>
+                      {payNoticeId === b.id && (
+                        <p role="status" className="mt-3 rounded-lg bg-orange-50 p-3 text-sm font-medium text-orange-700">
+                          Online payment is not available yet. Nothing was charged.
+                        </p>
+                      )}
+                    </div>
                   )}
                 </article>
               ))}

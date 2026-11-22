@@ -10,3 +10,7 @@ export const authClient = createAuthClient({
   ],
 });
 export const { signIn, signUp, signOut, useSession } = authClient;
+
+// A same-site path taken from ?redirect=... (anything else becomes "/"), so users can return after signing in
+export const safeRedirect = (target: string | null) =>
+  target && target.startsWith("/") && !target.startsWith("//") && !target.startsWith("/\\") ? target : "/";

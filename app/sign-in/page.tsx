@@ -1,19 +1,18 @@
 
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { signIn } from "@/lib/auth-client";
+import { useRouter, useSearchParams } from "next/navigation";
+import { safeRedirect, signIn } from "@/lib/auth-client";
 
-// Where to go after signing in: ?redirect=/some/path (same-site paths only), otherwise home
-const getRedirect = () => {
-  const target = new URLSearchParams(window.location.search).get("redirect");
-  return target && target.startsWith("/") && !target.startsWith("//") && !target.startsWith("/\\") ? target : "/";
-};
-
-export default function SignInPage() {
+function SignInForm() {
   const router = useRouter();
+
+  // ?redirect=/some/path is where the user was heading before being asked to sign in
+  const params = useSearchParams();
+  const redirect = safeRedirect(params.get("redirect"));
+  const redirectQuery = redirect === "/" ? "" : `?redirect=${encodeURIComponent(redirect)}`;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -38,7 +37,7 @@ export default function SignInPage() {
         return;
       }
 
-      router.push(getRedirect());
+      router.push(redirect);
       router.refresh();
     } catch {
       setError("Something went wrong. Please try again.");
@@ -55,7 +54,7 @@ export default function SignInPage() {
 
       const { error } = await signIn.social({
         provider: "google",
-        callbackURL: getRedirect(),
+        callbackURL: redirect,
       });
 
       if (error) {
@@ -80,7 +79,7 @@ export default function SignInPage() {
             Welcome Back!
           </h1>
           <p className="mt-2 text-sm text-gray-600">
-            Sign in to continue using FixMate.
+            {redirect === "/" ? "Sign in to continue using FixMate." : "Please sign in to continue. You will return to the page you asked for."}
           </p>
         </div>
 
@@ -169,7 +168,7 @@ export default function SignInPage() {
         <p className="mt-6 text-center text-sm font-medium text-gray-700">
           Dont have an account?{" "}
           <Link
-            href="/sign-up"
+            href={`/sign-up${redirectQuery}`}
             className="font-semibold text-teal-700 hover:text-teal-800"
           >
             Create Account
@@ -177,5 +176,14 @@ export default function SignInPage() {
         </p>
       </div>
     </main>
+  );
+}
+
+// useSearchParams needs a Suspense boundary
+export default function SignInPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignInForm />
+    </Suspense>
   );
 }

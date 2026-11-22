@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useSession } from "@/lib/auth-client";
+import { usePathname, useRouter } from "next/navigation";
+import { signOut, useSession } from "@/lib/auth-client";
 
 const links = [
   { href: "/", label: "Home" },
@@ -13,6 +13,7 @@ const links = [
 
 const myBookingsLink = { href: "/dashboard/my-bookings", label: "My Bookings" };
 const technicianLink = { href: "/dashboard/technician", label: "Technician Dashboard" };
+const adminLink = { href: "/dashboard/admin", label: "Admin Dashboard" };
 
 function WrenchIcon() {
   return (
@@ -25,11 +26,25 @@ function WrenchIcon() {
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
-  const { data: session } = useSession();
+  const router = useRouter();
+  const { data: session, isPending } = useSession();
 
-  // Extra link by role: "My Bookings" for customers, "Technician Dashboard" for technicians
-  const role = session?.user.role;
-  const navLinks = role === "customer" ? [...links, myBookingsLink] : role === "technician" ? [...links, technicianLink] : links;
+  // Extra link by role: "My Bookings" (customer), "Technician Dashboard" (technician), "Admin Dashboard" (admin)
+  const roleLinks = { customer: myBookingsLink, technician: technicianLink, admin: adminLink };
+  const roleLink = roleLinks[session?.user.role as keyof typeof roleLinks];
+
+  // Signed out: only Home. Signed in: the main links plus the link for the user's role.
+  const navLinks = session ? (roleLink ? [...links, roleLink] : links) : [links[0]];
+
+  const handleLogout = async () => {
+    setOpen(false);
+    try {
+      await signOut(); // updates useSession everywhere, so the Navbar changes straight away
+    } finally {
+      router.push("/");
+      router.refresh();
+    }
+  };
 
   const isActive = (href: string) =>
     !href.includes("#") && (href === "/" ? pathname === "/" : pathname.startsWith(href));
@@ -63,13 +78,29 @@ export default function Navbar() {
           ))}
         </ul>
 
+        {/* Nothing is shown while the session loads, so signed-in users never see a flash of Sign in / Sign up */}
         <div className="hidden items-center gap-3 md:flex">
-          <Link href="/sign-in" className="text-sm font-semibold text-gray-800 hover:text-teal-700">
-            Sign in
-          </Link>
-          <Link href="/sign-up" className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-600">
-            Sign up
-          </Link>
+          {isPending ? null : session ? (
+            <>
+              <span className="max-w-[10rem] truncate text-sm font-medium text-gray-800">Welcome, {session.user.name}</span>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-800 transition hover:bg-gray-50"
+              >
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <Link href="/sign-in" className="text-sm font-semibold text-gray-800 hover:text-teal-700">
+                Sign in
+              </Link>
+              <Link href="/sign-up" className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-600">
+                Sign up
+              </Link>
+            </>
+          )}
         </div>
 
         <button
@@ -103,14 +134,27 @@ export default function Navbar() {
               </li>
             ))}
           </ul>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <Link href="/sign-in" className="rounded-lg border border-gray-300 py-2 text-center text-sm font-semibold text-gray-800">
-              Sign in
-            </Link>
-            <Link href="/sign-up" className="rounded-lg bg-orange-500 py-2 text-center text-sm font-semibold text-white">
-              Sign up
-            </Link>
-          </div>
+          {isPending ? null : session ? (
+            <div className="mt-4">
+              <p className="truncate px-3 text-sm font-medium text-gray-800">Welcome, {session.user.name}</p>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="mt-3 w-full rounded-lg border border-gray-300 py-2 text-center text-sm font-semibold text-gray-800"
+              >
+                Logout
+              </button>
+            </div>
+          ) : (
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <Link href="/sign-in" onClick={() => setOpen(false)} className="rounded-lg border border-gray-300 py-2 text-center text-sm font-semibold text-gray-800">
+                Sign in
+              </Link>
+              <Link href="/sign-up" onClick={() => setOpen(false)} className="rounded-lg bg-orange-500 py-2 text-center text-sm font-semibold text-white">
+                Sign up
+              </Link>
+            </div>
+          )}
         </div>
       )}
     </header>
