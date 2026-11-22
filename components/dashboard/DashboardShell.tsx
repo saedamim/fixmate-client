@@ -19,9 +19,9 @@ type NavItem = {
 // What each role sees. The role always comes from the signed-in session, never from the client.
 const roleNav: Record<string, NavItem[]> = {
   customer: [
-    { label: "Dashboard", href: "/dashboard/customer", icon: "grid", exact: true, exists: true },
+    { label: "Overview", href: "/dashboard/customer", icon: "grid", exact: true, exists: true },
     { label: "My Bookings", href: "/dashboard/customer/bookings", icon: "calendar", aliases: ["/dashboard/my-bookings"], exists: true },
-    { label: "Payments", href: "/dashboard/customer/payments", icon: "card", exists: true },
+    { label: "Payment History", href: "/dashboard/customer/payments", icon: "card", exists: true },
   ],
   technician: [
     { label: "Dashboard", href: "/dashboard/technician", icon: "grid", exact: true, exists: true },
@@ -39,8 +39,8 @@ const roleNav: Record<string, NavItem[]> = {
 };
 
 const commonNav: NavItem[] = [
-  { label: "Profile", href: "/dashboard/profile", icon: "user", exists: false },
-  { label: "Home", href: "/", icon: "home", exact: true, exists: true },
+  { label: "Update Profile", href: "/dashboard/profile", icon: "user", exists: true },
+  { label: "Back to site", href: "/", icon: "home", exact: true, exists: true },
 ];
 
 const iconPaths: Record<IconName, string> = {

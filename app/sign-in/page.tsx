@@ -4,7 +4,7 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { safeRedirect, signIn } from "@/lib/auth-client";
+import { safeRedirect, siteUrl, signIn } from "@/lib/auth-client";
 
 function SignInForm() {
   const router = useRouter();
@@ -54,7 +54,8 @@ function SignInForm() {
 
       const { error } = await signIn.social({
         provider: "google",
-        callbackURL: redirect,
+        callbackURL: siteUrl(redirect),
+        errorCallbackURL: siteUrl("/sign-in"),
       });
 
       if (error) {

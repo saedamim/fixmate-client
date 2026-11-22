@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "@/lib/auth-client";
+import Avatar from "./Avatar";
 
 const links = [
   { href: "/", label: "Home" },
@@ -82,6 +83,7 @@ export default function Navbar() {
         <div className="hidden items-center gap-3 md:flex">
           {isPending ? null : session ? (
             <>
+              <Avatar name={session.user.name} src={session.user.image} size={32} />
               <span className="max-w-[10rem] truncate text-sm font-medium text-gray-800">Welcome, {session.user.name}</span>
               <button
                 type="button"
@@ -136,7 +138,10 @@ export default function Navbar() {
           </ul>
           {isPending ? null : session ? (
             <div className="mt-4">
-              <p className="truncate px-3 text-sm font-medium text-gray-800">Welcome, {session.user.name}</p>
+              <div className="flex items-center gap-3 px-3">
+                <Avatar name={session.user.name} src={session.user.image} size={32} />
+                <p className="truncate text-sm font-medium text-gray-800">Welcome, {session.user.name}</p>
+              </div>
               <button
                 type="button"
                 onClick={handleLogout}

@@ -4,7 +4,8 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { safeRedirect, signUp, signIn } from "@/lib/auth-client";
+import { safeRedirect, siteUrl, signUp, signIn } from "@/lib/auth-client";
+import AvatarPicker from "@/components/site/AvatarPicker";
 
 function SignUpForm() {
   const router = useRouter();
@@ -18,6 +19,8 @@ function SignUpForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [avatar, setAvatar] = useState<string | null>(null); // link of the uploaded picture
+  const [avatarBusy, setAvatarBusy] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -38,6 +41,7 @@ function SignUpForm() {
         name,
         email,
         password,
+        ...(avatar ? { image: avatar } : {}),
       });
 
       if (error) {
@@ -62,7 +66,8 @@ function SignUpForm() {
 
       const { error } = await signIn.social({
         provider: "google",
-        callbackURL: redirect,
+        callbackURL: siteUrl(redirect),
+        errorCallbackURL: siteUrl("/sign-up"),
       });
 
       if (error) {
@@ -93,6 +98,8 @@ function SignUpForm() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
+
+          <AvatarPicker name={name} url={avatar} onChange={setAvatar} onBusyChange={setAvatarBusy} disabled={loading || googleLoading} />
 
           <div>
             <label className="mb-2 block text-sm font-semibold text-gray-800">
@@ -159,7 +166,7 @@ function SignUpForm() {
 
           <button
             type="submit"
-            disabled={loading || googleLoading}
+            disabled={loading || googleLoading || avatarBusy}
             className="w-full rounded-lg bg-orange-500 py-3 font-semibold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? "Creating Account..." : "Create Account"}
