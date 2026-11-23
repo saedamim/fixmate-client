@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSession } from "@/lib/auth-client";
+import RoleGate from "@/components/dashboard/RoleGate";
 import { usdMoney } from "@/lib/currency";
 import { formatDateTime, paymentStatusLabel, paymentStatusOptions, paymentStatusStyle, shortId, type Payment } from "@/lib/payments";
 import { PagedList } from "@/components/dashboard/PagedList";
@@ -52,59 +52,36 @@ function PaymentRows({ payments }: { payments: Payment[] }) {
 
 // Payment History: real records from GET /api/payments/my. Nothing is shown until the backend has a record.
 export default function CustomerPaymentsPage() {
-  const { data: session, isPending } = useSession();
-
-  let content: React.ReactNode;
-
-  if (isPending) {
-    content = <div className="h-40 animate-pulse rounded-2xl bg-gray-200" aria-busy="true" />;
-  } else if (!session) {
-    content = (
-      <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
-        <p className="text-gray-700">Please sign in to see your payments.</p>
-        <Link href="/sign-in?redirect=/dashboard/customer/payments" className="mt-5 inline-block rounded-lg bg-orange-500 px-6 py-3 font-semibold text-white transition hover:bg-orange-600">
-          Sign in
-        </Link>
-      </div>
-    );
-  } else if (session.user.role !== "customer") {
-    content = (
-      <p className="rounded-2xl bg-orange-50 p-6 text-sm font-medium text-orange-700">
-        {forbiddenMessage}
-        {session.user.role && ` You are signed in as a ${session.user.role}.`}
-      </p>
-    );
-  } else {
-    content = (
-      <PagedList<Payment>
-        path="/api/payments/my"
-        listKey="payments"
-        filterName="status"
-        options={paymentStatusOptions}
-        noun="payments"
-        forbidden={forbiddenMessage}
-        signInPath="/dashboard/customer/payments"
-        render={(payments) => <PaymentRows payments={payments} />}
-        empty={
-          <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-10 text-center">
-            <p className="text-lg font-semibold text-gray-900">No payments yet</p>
-            <p className="mx-auto mt-2 max-w-md text-sm text-gray-600">
-              When you pay for a completed repair, the payment will be listed here.
-            </p>
-            <Link href="/dashboard/customer/bookings" className="mt-5 inline-block font-semibold text-teal-700 hover:underline">
-              View my bookings →
-            </Link>
-          </div>
-        }
-      />
-    );
-  }
-
   return (
     <main className="mx-auto max-w-6xl px-4 py-10">
       <h1 className="text-3xl font-bold text-gray-900">Payment History</h1>
       <p className="mt-2 mb-8 text-gray-600">Your payments for completed repairs.</p>
-      {content}
+
+      <RoleGate role="customer" action="see payments" signInPath="/dashboard/customer/payments">
+        {() => (
+          <PagedList<Payment>
+            path="/api/payments/my"
+            listKey="payments"
+            filterName="status"
+            options={paymentStatusOptions}
+            noun="payments"
+            forbidden={forbiddenMessage}
+            signInPath="/dashboard/customer/payments"
+            render={(payments) => <PaymentRows payments={payments} />}
+            empty={
+              <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-10 text-center">
+                <p className="text-lg font-semibold text-gray-900">No payments yet</p>
+                <p className="mx-auto mt-2 max-w-md text-sm text-gray-600">
+                  When you pay for a completed repair, the payment will be listed here.
+                </p>
+                <Link href="/dashboard/customer/bookings" className="mt-5 inline-block font-semibold text-teal-700 hover:underline">
+                  View my bookings →
+                </Link>
+              </div>
+            }
+          />
+        )}
+      </RoleGate>
     </main>
   );
 }
