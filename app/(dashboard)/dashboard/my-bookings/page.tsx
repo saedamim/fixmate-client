@@ -3,11 +3,11 @@
 import { toast } from "sonner";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useSession } from "@/lib/auth-client";
 import { callApi, errorMessage, SESSION_EXPIRED } from "@/lib/api";
 import { formatDate, statusLabel, statusStyle, statusTextStyle, type BookingStatus as Status } from "@/lib/bookings";
 import { usd, usdMoney } from "@/lib/currency";
 import { formatDateTime, type Payment } from "@/lib/payments";
+import RoleGate from "@/components/dashboard/RoleGate";
 import ConfirmDialog from "@/components/dashboard/ConfirmDialog";
 
 type Booking = {
@@ -51,9 +51,8 @@ const isStripeCheckoutUrl = (value: unknown): value is string => {
 const buttonClass =
   "rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-800 transition hover:bg-gray-50";
 
-export default function MyBookingsPage() {
-  const { data: session, isPending } = useSession();
-  const isCustomer = session?.user.role === "customer";
+// Everything below the page heading; `headingRef` gets focus back when a cancelled booking's button disappears
+function BookingsManager({ headingRef }: { headingRef: React.RefObject<HTMLHeadingElement | null> }) {
 
   const [filter, setFilter] = useState<"all" | Status>("all");
   const [page, setPage] = useState(1);
@@ -72,12 +71,9 @@ export default function MyBookingsPage() {
   // Payment: the booking being sent to Stripe Checkout, and a per-booking error
   const [payingId, setPayingId] = useState("");
   const [payError, setPayError] = useState<{ id: string; message: string } | null>(null);
-  const headingRef = useRef<HTMLHeadingElement>(null);
 
   // Load the customer's bookings whenever the filter or page changes
   useEffect(() => {
-    if (!isCustomer) return;
-
     let ignore = false;
     const query = new URLSearchParams({ page: String(page), limit: "9" });
     if (filter !== "all") query.set("status", filter);
@@ -106,13 +102,13 @@ export default function MyBookingsPage() {
     return () => {
       ignore = true;
     };
-  }, [isCustomer, filter, page, attempt]);
+  }, [filter, page, attempt]);
 
   // Payment details (amount, transaction id, date) for the paid bookings shown on this page. One lookup by booking id,
   // so it never depends on how many payments the customer has. Optional: bookings still work without it.
   useEffect(() => {
     const ids = bookings.filter((b) => b.paymentStatus === "paid").map((b) => b.id);
-    if (!isCustomer || ids.length === 0) return;
+    if (ids.length === 0) return;
 
     let ignore = false;
     callApi(`/api/payments/my?status=paid&limit=50&bookingIds=${ids.join(",")}`, { forbiddenMessage })
@@ -124,7 +120,7 @@ export default function MyBookingsPage() {
     return () => {
       ignore = true;
     };
-  }, [isCustomer, bookings]);
+  }, [bookings]);
 
   // Coming back with the browser's Back button restores this page from cache: unlock Pay and reload
   useEffect(() => {
@@ -207,212 +203,176 @@ export default function MyBookingsPage() {
     }
   };
 
-  let content: React.ReactNode;
-
-  if (isPending) {
-    content = <div className="h-40 animate-pulse rounded-2xl bg-gray-200" aria-busy="true" />;
-  } else if (!session) {
-    content = (
-      <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
-        <p className="text-gray-700">Please sign in to view your bookings.</p>
-        <div className="mt-5 flex flex-col justify-center gap-3 sm:flex-row">
-          <Link href="/sign-in?redirect=/dashboard/my-bookings" className="rounded-lg bg-orange-500 px-6 py-3 font-semibold text-white transition hover:bg-orange-600">
-            Sign in
-          </Link>
-          <Link href="/sign-up" className="rounded-lg border border-gray-300 px-6 py-3 font-semibold text-gray-800 transition hover:bg-gray-50">
-            Create an account
-          </Link>
-        </div>
-      </div>
-    );
-  } else if (!isCustomer) {
-    content = (
-      <p className="rounded-2xl bg-orange-50 p-6 text-sm font-medium text-orange-700">
-        Only customer accounts can view bookings.
-        {session.user.role && ` You are signed in as a ${session.user.role}.`}
-      </p>
-    );
-  } else {
-    content = (
-      <>
-        {counts && (
-          <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-5" aria-label="Booking statistics">
-            {[
-              { label: "Total Bookings", value: counts.total, style: "text-gray-900" },
-              { label: "Pending", value: counts.requested, style: statusTextStyle.requested },
-              { label: "Accepted", value: counts.accepted, style: statusTextStyle.accepted },
-              { label: "In Progress", value: counts.in_progress, style: statusTextStyle.in_progress },
-              { label: "Completed", value: counts.completed, style: statusTextStyle.completed },
-            ].map((s) => (
-              <div key={s.label} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-                <p className="text-sm text-gray-600">{s.label}</p>
-                <p className={`mt-1 text-3xl font-bold ${s.style}`}>{s.value}</p>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="flex gap-2 overflow-x-auto pb-2" role="group" aria-label="Filter by status">
-          {filters.map((f) => (
-            <button
-              key={f.value}
-              type="button"
-              onClick={() => selectFilter(f.value)}
-              aria-pressed={filter === f.value}
-              className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition ${
-                filter === f.value
-                  ? "border-teal-700 bg-teal-700 text-white"
-                  : "border-gray-300 bg-white text-gray-800 hover:bg-gray-50"
-              }`}
-            >
-              {f.label}
-            </button>
+  return (
+    <>
+      {counts && (
+        <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-5" aria-label="Booking statistics">
+          {[
+            { label: "Total Bookings", value: counts.total, style: "text-gray-900" },
+            { label: "Pending", value: counts.requested, style: statusTextStyle.requested },
+            { label: "Accepted", value: counts.accepted, style: statusTextStyle.accepted },
+            { label: "In Progress", value: counts.in_progress, style: statusTextStyle.in_progress },
+            { label: "Completed", value: counts.completed, style: statusTextStyle.completed },
+          ].map((s) => (
+            <div key={s.label} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+              <p className="text-sm text-gray-600">{s.label}</p>
+              <p className={`mt-1 text-3xl font-bold ${s.style}`}>{s.value}</p>
+            </div>
           ))}
         </div>
+      )}
 
-        {loading ? (
-          <div className="mt-6 grid gap-4 md:grid-cols-2" aria-busy="true">
-            {[1, 2, 3, 4].map((n) => (
-              <div key={n} className="h-44 animate-pulse rounded-2xl bg-gray-200" />
+      <div className="flex gap-2 overflow-x-auto pb-2" role="group" aria-label="Filter by status">
+        {filters.map((f) => (
+          <button
+            key={f.value}
+            type="button"
+            onClick={() => selectFilter(f.value)}
+            aria-pressed={filter === f.value}
+            className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition ${
+              filter === f.value
+                ? "border-teal-700 bg-teal-700 text-white"
+                : "border-gray-300 bg-white text-gray-800 hover:bg-gray-50"
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <div className="mt-6 grid gap-4 md:grid-cols-2" aria-busy="true">
+          {[1, 2, 3, 4].map((n) => (
+            <div key={n} className="h-44 animate-pulse rounded-2xl bg-gray-200" />
+          ))}
+        </div>
+      ) : error ? (
+        <div role="alert" className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
+          <p className="font-medium text-red-600">{error}</p>
+          <div className="mt-4 flex justify-center gap-3">
+            <button onClick={retry} className="rounded-lg bg-orange-500 px-5 py-2 font-semibold text-white transition hover:bg-orange-600">
+              Try again
+            </button>
+            {error === SESSION_EXPIRED && (
+              <Link href="/sign-in?redirect=/dashboard/my-bookings" className={buttonClass}>Sign in</Link>
+            )}
+          </div>
+        </div>
+      ) : bookings.length === 0 ? (
+        <div className="mt-6 rounded-2xl border border-dashed border-gray-300 p-10 text-center text-gray-600">
+          <p>
+            {filter === "all"
+              ? "You have no bookings yet."
+              : `You have no ${statusLabel[filter].toLowerCase()} bookings.`}
+          </p>
+          {filter === "all" && (
+            <Link href="/services" className="mt-4 inline-block font-semibold text-teal-700 hover:underline">
+              Browse services →
+            </Link>
+          )}
+        </div>
+      ) : (
+        <>
+          <p className="mt-6 text-sm text-gray-600">
+            {total} {total === 1 ? "booking" : "bookings"}
+          </p>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            {bookings.map((b) => (
+              <article key={b.id} className="flex flex-col rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="font-semibold text-gray-900">{b.serviceTitle}</h3>
+                    <p className="mt-1 text-sm text-gray-600">{b.category}</p>
+                  </div>
+                  <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${statusStyle[b.status]}`}>
+                    {statusLabel[b.status]}
+                  </span>
+                </div>
+
+                <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                  <div>
+                    <dt className="text-gray-500">Date</dt>
+                    <dd className="font-medium text-gray-900">{formatDate(b.preferredDate)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-gray-500">Time</dt>
+                    <dd className="font-medium text-gray-900">{b.preferredTime}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-gray-500">Technician</dt>
+                    <dd className="font-medium text-gray-900">{b.technician}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-gray-500">Price</dt>
+                    <dd className="font-medium text-gray-900">{usd(b.price)}</dd>
+                  </div>
+                  {b.finalAmount !== undefined && (
+                    <div>
+                      <dt className="text-gray-500">{b.paymentStatus === "paid" ? "Bill paid" : "Bill amount due"}</dt>
+                      <dd className="font-medium text-gray-900">{usd(b.finalAmount)}</dd>
+                    </div>
+                  )}
+                  <div>
+                    <dt className="text-gray-500">Payment</dt>
+                    <dd className={`font-medium capitalize ${b.paymentStatus === "paid" ? "text-green-700" : "text-gray-900"}`}>
+                      {b.paymentStatus}
+                    </dd>
+                  </div>
+                </dl>
+
+                {b.paymentStatus === "paid" && (
+                  <div role="status" className="mt-4 rounded-lg bg-green-50 p-3 text-sm text-green-800">
+                    <p className="font-semibold">
+                      Payment confirmed{paidByBooking[b.id] ? ` · ${usdMoney(paidByBooking[b.id].amount)} ${paidByBooking[b.id].currency.toUpperCase()}` : ""}
+                    </p>
+                    {paidByBooking[b.id]?.paidAt && <p className="mt-1">Paid on {formatDateTime(paidByBooking[b.id].paidAt!)}</p>}
+                    {paidByBooking[b.id]?.transactionId && (
+                      <p className="mt-1 break-all">Transaction ID: {paidByBooking[b.id].transactionId}</p>
+                    )}
+                  </div>
+                )}
+
+                {b.status === "requested" && (
+                  <button
+                    onClick={() => openConfirm(b)}
+                    className="mt-5 self-start rounded-lg border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50"
+                  >
+                    Cancel booking
+                  </button>
+                )}
+
+                {/* Pay: only for completed bookings that are still unpaid. The backend decides the amount. */}
+                {b.status === "completed" && b.paymentStatus === "unpaid" && typeof b.finalAmount === "number" && (
+                  <div className="mt-5">
+                    <button
+                      onClick={() => startPayment(b.id)}
+                      disabled={payingId !== ""}
+                      className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {payingId === b.id ? "Redirecting to payment..." : `Pay Now · ${usdMoney(b.finalAmount)}`}
+                    </button>
+                    {payError?.id === b.id && (
+                      <p role="alert" className="mt-3 rounded-lg bg-red-50 p-3 text-sm font-medium text-red-600">{payError.message}</p>
+                    )}
+                  </div>
+                )}
+              </article>
             ))}
           </div>
-        ) : error ? (
-          <div role="alert" className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
-            <p className="font-medium text-red-600">{error}</p>
-            <div className="mt-4 flex justify-center gap-3">
-              <button onClick={retry} className="rounded-lg bg-orange-500 px-5 py-2 font-semibold text-white transition hover:bg-orange-600">
-                Try again
+
+          {totalPages > 1 && (
+            <nav aria-label="Pagination" className="mt-8 flex items-center justify-center gap-4">
+              <button onClick={() => goToPage(page - 1)} disabled={page <= 1} className={`${buttonClass} disabled:pointer-events-none disabled:opacity-40`}>
+                ← Previous
               </button>
-              {error === SESSION_EXPIRED && (
-                <Link href="/sign-in?redirect=/dashboard/my-bookings" className={buttonClass}>Sign in</Link>
-              )}
-            </div>
-          </div>
-        ) : bookings.length === 0 ? (
-          <div className="mt-6 rounded-2xl border border-dashed border-gray-300 p-10 text-center text-gray-600">
-            <p>
-              {filter === "all"
-                ? "You have no bookings yet."
-                : `You have no ${statusLabel[filter].toLowerCase()} bookings.`}
-            </p>
-            {filter === "all" && (
-              <Link href="/services" className="mt-4 inline-block font-semibold text-teal-700 hover:underline">
-                Browse services →
-              </Link>
-            )}
-          </div>
-        ) : (
-          <>
-            <p className="mt-6 text-sm text-gray-600">
-              {total} {total === 1 ? "booking" : "bookings"}
-            </p>
-            <div className="mt-4 grid gap-4 md:grid-cols-2">
-              {bookings.map((b) => (
-                <article key={b.id} className="flex flex-col rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h3 className="font-semibold text-gray-900">{b.serviceTitle}</h3>
-                      <p className="mt-1 text-sm text-gray-600">{b.category}</p>
-                    </div>
-                    <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${statusStyle[b.status]}`}>
-                      {statusLabel[b.status]}
-                    </span>
-                  </div>
-
-                  <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
-                    <div>
-                      <dt className="text-gray-500">Date</dt>
-                      <dd className="font-medium text-gray-900">{formatDate(b.preferredDate)}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-gray-500">Time</dt>
-                      <dd className="font-medium text-gray-900">{b.preferredTime}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-gray-500">Technician</dt>
-                      <dd className="font-medium text-gray-900">{b.technician}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-gray-500">Price</dt>
-                      <dd className="font-medium text-gray-900">{usd(b.price)}</dd>
-                    </div>
-                    {b.finalAmount !== undefined && (
-                      <div>
-                        <dt className="text-gray-500">{b.paymentStatus === "paid" ? "Bill paid" : "Bill amount due"}</dt>
-                        <dd className="font-medium text-gray-900">{usd(b.finalAmount)}</dd>
-                      </div>
-                    )}
-                    <div>
-                      <dt className="text-gray-500">Payment</dt>
-                      <dd className={`font-medium capitalize ${b.paymentStatus === "paid" ? "text-green-700" : "text-gray-900"}`}>
-                        {b.paymentStatus}
-                      </dd>
-                    </div>
-                  </dl>
-
-                  {b.paymentStatus === "paid" && (
-                    <div role="status" className="mt-4 rounded-lg bg-green-50 p-3 text-sm text-green-800">
-                      <p className="font-semibold">
-                        Payment confirmed{paidByBooking[b.id] ? ` · ${usdMoney(paidByBooking[b.id].amount)} ${paidByBooking[b.id].currency.toUpperCase()}` : ""}
-                      </p>
-                      {paidByBooking[b.id]?.paidAt && <p className="mt-1">Paid on {formatDateTime(paidByBooking[b.id].paidAt!)}</p>}
-                      {paidByBooking[b.id]?.transactionId && (
-                        <p className="mt-1 break-all">Transaction ID: {paidByBooking[b.id].transactionId}</p>
-                      )}
-                    </div>
-                  )}
-
-                  {b.status === "requested" && (
-                    <button
-                      onClick={() => openConfirm(b)}
-                      className="mt-5 self-start rounded-lg border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50"
-                    >
-                      Cancel booking
-                    </button>
-                  )}
-
-                  {/* Pay: only for completed bookings that are still unpaid. The backend decides the amount. */}
-                  {b.status === "completed" && b.paymentStatus === "unpaid" && typeof b.finalAmount === "number" && (
-                    <div className="mt-5">
-                      <button
-                        onClick={() => startPayment(b.id)}
-                        disabled={payingId !== ""}
-                        className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {payingId === b.id ? "Redirecting to payment..." : `Pay Now · ${usdMoney(b.finalAmount)}`}
-                      </button>
-                      {payError?.id === b.id && (
-                        <p role="alert" className="mt-3 rounded-lg bg-red-50 p-3 text-sm font-medium text-red-600">{payError.message}</p>
-                      )}
-                    </div>
-                  )}
-                </article>
-              ))}
-            </div>
-
-            {totalPages > 1 && (
-              <nav aria-label="Pagination" className="mt-8 flex items-center justify-center gap-4">
-                <button onClick={() => goToPage(page - 1)} disabled={page <= 1} className={`${buttonClass} disabled:pointer-events-none disabled:opacity-40`}>
-                  ← Previous
-                </button>
-                <span className="text-sm text-gray-600">Page {page} of {totalPages}</span>
-                <button onClick={() => goToPage(page + 1)} disabled={page >= totalPages} className={`${buttonClass} disabled:pointer-events-none disabled:opacity-40`}>
-                  Next →
-                </button>
-              </nav>
-            )}
-          </>
-        )}
-      </>
-    );
-  }
-
-  return (
-    <main className="mx-auto max-w-6xl px-4 py-10">
-      <h1 ref={headingRef} tabIndex={-1} className="text-3xl font-bold text-gray-900 outline-none">My Bookings</h1>
-      <p className="mt-2 mb-8 text-gray-600">Track and manage your repair requests.</p>
-
-      {content}
+              <span className="text-sm text-gray-600">Page {page} of {totalPages}</span>
+              <button onClick={() => goToPage(page + 1)} disabled={page >= totalPages} className={`${buttonClass} disabled:pointer-events-none disabled:opacity-40`}>
+                Next →
+              </button>
+            </nav>
+          )}
+        </>
+      )}
 
       {confirming && (
         <ConfirmDialog
@@ -428,6 +388,21 @@ export default function MyBookingsPage() {
           fallbackFocus={headingRef}
         />
       )}
+    </>
+  );
+}
+
+export default function MyBookingsPage() {
+  const headingRef = useRef<HTMLHeadingElement>(null);
+
+  return (
+    <main className="mx-auto max-w-6xl px-4 py-10">
+      <h1 ref={headingRef} tabIndex={-1} className="text-3xl font-bold text-gray-900 outline-none">My Bookings</h1>
+      <p className="mt-2 mb-8 text-gray-600">Track and manage your repair requests.</p>
+
+      <RoleGate role="customer" action="view bookings" signInPath="/dashboard/my-bookings">
+        {() => <BookingsManager headingRef={headingRef} />}
+      </RoleGate>
     </main>
   );
 }
