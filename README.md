@@ -54,7 +54,7 @@ The Sign in page lists ready-to-use accounts. Passwords are never shown there.
 
 | Role | Email | Password |
 | --- | --- | --- |
-| Admin | yeasminmem@gmail.com | _add the admin password here_ |
+| Admin | yeasminmem@gmail.com | 1122abcd |
 
 Stripe runs in test mode. Use the card `4242 4242 4242 4242` with any future date and any CVC.
 
