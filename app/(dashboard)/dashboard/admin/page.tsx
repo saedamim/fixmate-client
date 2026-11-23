@@ -5,6 +5,7 @@ import { callApi, errorMessage } from "@/lib/api";
 import { statusChartData, statusTextStyle, type BookingStatus } from "@/lib/bookings";
 import { usd } from "@/lib/currency";
 import BarChart from "@/components/dashboard/BarChart";
+import RevenueChart from "@/components/dashboard/RevenueChart";
 import RoleGate from "@/components/dashboard/RoleGate";
 import { ErrorBox, forbiddenMessage } from "@/components/dashboard/PagedList";
 
@@ -84,6 +85,10 @@ function Overview() {
             { label: "Rejected", value: stats.services.rejected, color: "bg-red-500" },
           ]}
         />
+      </div>
+
+      <div className="mt-6">
+        <RevenueChart title="Revenue, last 30 days" subtitle="Confirmed payments per day" path="/api/admin/revenue-by-day?days=30" forbidden={forbiddenMessage} />
       </div>
     </>
   );

@@ -7,6 +7,7 @@ import { statusChartData, type BookingStatus } from "@/lib/bookings";
 import { usdMoney } from "@/lib/currency";
 import { formatDateTime, type Earnings, type ServiceCounts } from "@/lib/payments";
 import BarChart from "@/components/dashboard/BarChart";
+import RevenueChart from "@/components/dashboard/RevenueChart";
 import RoleGate from "@/components/dashboard/RoleGate";
 
 const forbiddenMessage = "Only technician accounts can view this dashboard.";
@@ -74,6 +75,10 @@ function Overview({ name, email }: { name: string; email: string }) {
           Could not load your overview: {error}
         </p>
       )}
+
+      <div className="mt-6">
+        <RevenueChart title="Earnings, last 30 days" subtitle="Confirmed payments per day" path="/api/payments/earnings-by-day?days=30" forbidden={forbiddenMessage} />
+      </div>
 
       {requestCounts && requestCounts.total > 0 && (
         <div className="mt-6">
