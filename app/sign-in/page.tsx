@@ -4,8 +4,9 @@
 import { toast } from "sonner";
 import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { safeRedirect, siteUrl, signIn } from "@/lib/auth-client";
+import { useRedirectWhenSignedIn } from "@/lib/use-redirect-when-signed-in";
 
 // Existing accounts shown as a hint on the Sign-in page. Emails only: passwords are never stored or shown here.
 const demoAccounts = [
@@ -16,12 +17,11 @@ const demoAccounts = [
 ];
 
 function SignInForm() {
-  const router = useRouter();
-
   // ?redirect=/some/path is where the user was heading before being asked to sign in
   const params = useSearchParams();
   const redirect = safeRedirect(params.get("redirect"));
   const redirectQuery = redirect === "/" ? "" : `?redirect=${encodeURIComponent(redirect)}`;
+  useRedirectWhenSignedIn(redirect); // a signed-in user never sees this form
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -49,8 +49,6 @@ function SignInForm() {
 
       toast.success("Signed in successfully.");
 
-      router.push(redirect);
-      router.refresh();
     } catch {
       setError("Something went wrong. Please try again.");
       toast.error("Something went wrong. Please try again.");
@@ -67,7 +65,7 @@ function SignInForm() {
 
       const { error } = await signIn.social({
         provider: "google",
-        callbackURL: siteUrl(redirect),
+        callbackURL: siteUrl(`/sign-in${redirectQuery}`), // coming back from Google, the redirect above takes over
         errorCallbackURL: siteUrl("/sign-in"),
       });
 

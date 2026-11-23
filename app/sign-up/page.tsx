@@ -4,8 +4,9 @@
 import { toast } from "sonner";
 import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { dashboardPath, safeRedirect, siteUrl, signUp, signIn } from "@/lib/auth-client";
+import { useSearchParams } from "next/navigation";
+import { safeRedirect, siteUrl, signUp, signIn } from "@/lib/auth-client";
+import { useRedirectWhenSignedIn } from "@/lib/use-redirect-when-signed-in";
 import AvatarPicker from "@/components/site/AvatarPicker";
 
 // Only these two roles can be chosen at sign up; admin accounts are created by hand. The server checks this again.
@@ -31,12 +32,11 @@ function validate(name: string, email: string, password: string, confirmPassword
 }
 
 function SignUpForm() {
-  const router = useRouter();
-
   // ?redirect=/some/path is where the user was heading before being asked to sign up
   const params = useSearchParams();
   const redirect = safeRedirect(params.get("redirect"));
   const redirectQuery = redirect === "/" ? "" : `?redirect=${encodeURIComponent(redirect)}`;
+  useRedirectWhenSignedIn(redirect); // after sign up, or when already signed in: go to the page asked for or the role dashboard
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -80,9 +80,6 @@ function SignUpForm() {
 
       toast.success("Account created. Welcome to FixMate!");
 
-      // Without a page to return to, go to the new account's own dashboard
-      router.push(redirect === "/" ? dashboardPath(role) : redirect);
-      router.refresh();
     } catch {
       setError("Something went wrong. Please try again.");
       toast.error("Something went wrong. Please try again.");
@@ -99,7 +96,7 @@ function SignUpForm() {
 
       const { error } = await signIn.social({
         provider: "google",
-        callbackURL: siteUrl(redirect),
+        callbackURL: siteUrl(`/sign-in${redirectQuery}`), // the signed-in redirect then picks the right page
         errorCallbackURL: siteUrl("/sign-up"),
       });
 
