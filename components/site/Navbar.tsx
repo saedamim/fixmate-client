@@ -46,8 +46,6 @@ export default function Navbar() {
   const roleLink = role === "technician" ? technicianLink : role === "admin" ? adminLink : null;
   const accountLinks = role === "customer" ? customerMenu : roleLink ? [roleLink] : [];
 
-  // Signed out: only Home. Signed in: the main links.
-  const navLinks = session ? links : [links[0]];
 
   // The avatar menu closes on Escape or a click outside it
   useEffect(() => {
@@ -94,7 +92,7 @@ export default function Navbar() {
         </Link>
 
         <ul className="hidden items-center gap-8 md:flex">
-          {navLinks.map((l) => (
+          {links.map((l) => (
             <li key={l.href}>
               <Link
                 href={l.href}
@@ -177,7 +175,7 @@ export default function Navbar() {
       {open && (
         <div className="border-t border-gray-200 bg-white px-4 py-4 md:hidden">
           <ul className="space-y-1">
-            {navLinks.map((l) => (
+            {links.map((l) => (
               <li key={l.href}>
                 <Link
                   href={l.href}
