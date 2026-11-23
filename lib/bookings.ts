@@ -31,5 +31,19 @@ export const statusTextStyle: Record<BookingStatus, string> = {
   rejected: "text-red-600",
 };
 
+// Bar colours for charts: the same status colours, as solid fills
+const statusBarStyle: Record<BookingStatus, string> = {
+  requested: "bg-blue-600",
+  accepted: "bg-indigo-600",
+  in_progress: "bg-amber-500",
+  completed: "bg-green-600",
+  cancelled: "bg-gray-400",
+  rejected: "bg-red-500",
+};
+
+// Chart rows in pipeline order from a booking count object (the API's `counts`)
+export const statusChartData = (counts: Record<BookingStatus, number>) =>
+  (Object.keys(statusLabel) as BookingStatus[]).map((s) => ({ label: statusLabel[s], value: counts[s] ?? 0, color: statusBarStyle[s] }));
+
 export const formatDate = (date: string) =>
   new Date(`${date}T00:00:00`).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" });

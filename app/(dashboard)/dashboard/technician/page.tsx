@@ -3,8 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { callApi, errorMessage } from "@/lib/api";
+import { statusChartData, type BookingStatus } from "@/lib/bookings";
 import { usdMoney } from "@/lib/currency";
 import { formatDateTime, type Earnings, type ServiceCounts } from "@/lib/payments";
+import BarChart from "@/components/dashboard/BarChart";
 import RoleGate from "@/components/dashboard/RoleGate";
 
 const forbiddenMessage = "Only technician accounts can view this dashboard.";
@@ -12,7 +14,7 @@ const forbiddenMessage = "Only technician accounts can view this dashboard.";
 // Services, new requests and earnings, each from its own endpoint. Earnings count only payments Stripe confirmed.
 function Overview({ name, email }: { name: string; email: string }) {
   const [serviceCounts, setServiceCounts] = useState<ServiceCounts | null>(null);
-  const [newRequests, setNewRequests] = useState<number | null>(null);
+  const [requestCounts, setRequestCounts] = useState<Record<BookingStatus | "total", number> | null>(null);
   const [earnings, setEarnings] = useState<Earnings | null>(null);
   const [error, setError] = useState("");
 
@@ -26,7 +28,7 @@ function Overview({ name, email }: { name: string; email: string }) {
       .then(([services, bookings, money]) => {
         if (ignore) return;
         setServiceCounts(services.counts);
-        setNewRequests(bookings.counts.requested);
+        setRequestCounts(bookings.counts);
         setEarnings(money);
       })
       .catch((err) => !ignore && setError(errorMessage(err)));
@@ -39,7 +41,7 @@ function Overview({ name, email }: { name: string; email: string }) {
   const cards = [
     { label: "Total Services", value: serviceCounts?.total, style: "text-gray-900" },
     { label: "Approved Services", value: serviceCounts?.approved, style: "text-green-700" },
-    { label: "Pending Requests", value: newRequests, style: "text-orange-600", href: "/dashboard/technician/requests" },
+    { label: "Pending Requests", value: requestCounts?.requested, style: "text-orange-600", href: "/dashboard/technician/requests" },
     { label: "Total Earnings", value: earnings && usdMoney(earnings.totalEarnings), style: "text-teal-700" },
   ];
 
@@ -71,6 +73,12 @@ function Overview({ name, email }: { name: string; email: string }) {
         <p role="alert" className="mt-3 rounded-lg bg-red-50 p-3 text-sm font-medium text-red-600">
           Could not load your overview: {error}
         </p>
+      )}
+
+      {requestCounts && requestCounts.total > 0 && (
+        <div className="mt-6">
+          <BarChart title="Requests by status" subtitle="Every job sent to you, by where it stands" data={statusChartData(requestCounts)} />
+        </div>
       )}
 
       <section aria-labelledby="recent-earnings" className="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">

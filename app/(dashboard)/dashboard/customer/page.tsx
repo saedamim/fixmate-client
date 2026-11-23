@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
+import BarChart from "@/components/dashboard/BarChart";
 import { callApi, errorMessage, SESSION_EXPIRED } from "@/lib/api";
-import { formatDate, statusLabel, statusStyle, statusTextStyle, type BookingStatus as Status } from "@/lib/bookings";
+import { formatDate, statusChartData, statusLabel, statusStyle, statusTextStyle, type BookingStatus as Status } from "@/lib/bookings";
 
 type Booking = {
   id: string;
@@ -124,6 +125,12 @@ export default function CustomerOverviewPage() {
                 </div>
               ))}
             </div>
+
+            {counts && counts.total > 0 && (
+              <div className="mt-6">
+                <BarChart title="Bookings by status" subtitle="Where each of your repair requests stands" data={statusChartData(counts)} />
+              </div>
+            )}
 
             <section aria-labelledby="recent-title" className="mt-8">
               <div className="mb-4 flex items-center justify-between gap-4">

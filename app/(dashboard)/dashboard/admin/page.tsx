@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { callApi, errorMessage } from "@/lib/api";
-import { statusTextStyle, type BookingStatus } from "@/lib/bookings";
+import { statusChartData, statusTextStyle, type BookingStatus } from "@/lib/bookings";
 import { usd } from "@/lib/currency";
+import BarChart from "@/components/dashboard/BarChart";
 import RoleGate from "@/components/dashboard/RoleGate";
 import { ErrorBox, forbiddenMessage } from "@/components/dashboard/PagedList";
 
@@ -61,15 +62,30 @@ function Overview() {
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-      {cards.map((c) => (
-        <div key={c.label} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-600">{c.label}</p>
-          <p className={`mt-1 text-3xl font-bold ${c.style ?? "text-gray-900"}`}>{c.value}</p>
-          <p className="mt-1 text-xs text-gray-500">{c.note}</p>
-        </div>
-      ))}
-    </div>
+    <>
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {cards.map((c) => (
+          <div key={c.label} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+            <p className="text-sm text-gray-600">{c.label}</p>
+            <p className={`mt-1 text-3xl font-bold ${c.style ?? "text-gray-900"}`}>{c.value}</p>
+            <p className="mt-1 text-xs text-gray-500">{c.note}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        <BarChart title="Bookings by status" subtitle="Every repair job on the platform" data={statusChartData(stats.bookings)} />
+        <BarChart
+          title="Services by approval"
+          subtitle="Listings submitted by technicians"
+          data={[
+            { label: "Pending", value: stats.services.pending, color: "bg-amber-500" },
+            { label: "Approved", value: stats.services.approved, color: "bg-green-600" },
+            { label: "Rejected", value: stats.services.rejected, color: "bg-red-500" },
+          ]}
+        />
+      </div>
+    </>
   );
 }
 
