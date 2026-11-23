@@ -36,7 +36,7 @@ function SignUpForm() {
   const params = useSearchParams();
   const redirect = safeRedirect(params.get("redirect"));
   const redirectQuery = redirect === "/" ? "" : `?redirect=${encodeURIComponent(redirect)}`;
-  useRedirectWhenSignedIn(redirect); // after sign up, or when already signed in: go to the page asked for or the role dashboard
+  useRedirectWhenSignedIn(redirect); // after sign up, or when already signed in: go to the page asked for, or Home
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
