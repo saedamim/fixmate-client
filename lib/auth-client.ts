@@ -6,7 +6,15 @@ import { inferAdditionalFields, jwtClient } from "better-auth/client/plugins";
 export const authClient = createAuthClient({
   plugins: [
     jwtClient(), // adds authClient.token() for calling the Express API
-    inferAdditionalFields({ user: { role: { type: "string", required: false } } }), // types session.user.role
+    inferAdditionalFields({
+      // types session.user.role and the profile fields
+      user: {
+        role: { type: "string", required: false },
+        phone: { type: "string", required: false },
+        area: { type: "string", required: false },
+        bio: { type: "string", required: false },
+      },
+    }),
   ],
 });
 export const { signIn, signUp, signOut, useSession } = authClient;
