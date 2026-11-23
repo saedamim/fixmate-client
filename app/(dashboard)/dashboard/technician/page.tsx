@@ -395,7 +395,7 @@ export default function TechnicianDashboardPage() {
                         {completingId === r.id ? (
                           <div className="mt-5">
                             <label htmlFor={`amount-${r.id}`} className="mb-2 block text-sm font-semibold text-gray-800">
-                              Final amount ($)
+                              Bill amount ($)
                             </label>
                             <div className="flex flex-wrap gap-3">
                               <input
@@ -409,7 +409,7 @@ export default function TechnicianDashboardPage() {
                                 className="w-32 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
                               />
                               <button onClick={() => confirmComplete(r.id)} disabled={busy} className={`${actionClass} bg-green-600 text-white hover:bg-green-700`}>
-                                {busy ? "Saving..." : "Confirm"}
+                                {busy ? "Sending..." : "Send bill"}
                               </button>
                               <button onClick={() => setCompletingId("")} disabled={busy} className={`${buttonClass} disabled:opacity-60`}>
                                 Cancel
@@ -435,7 +435,7 @@ export default function TechnicianDashboardPage() {
                             )}
                             {r.status === "in_progress" && (
                               <button onClick={() => openComplete(r)} disabled={busy} className={`${actionClass} mt-5 self-start bg-green-600 text-white hover:bg-green-700`}>
-                                Complete Work
+                                Complete &amp; Send Bill
                               </button>
                             )}
                           </>

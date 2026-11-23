@@ -381,7 +381,7 @@ export default function MyBookingsPage() {
                     </div>
                     {b.finalAmount !== undefined && (
                       <div>
-                        <dt className="text-gray-500">{b.paymentStatus === "paid" ? "Final amount" : "Amount due"}</dt>
+                        <dt className="text-gray-500">{b.paymentStatus === "paid" ? "Bill paid" : "Bill amount due"}</dt>
                         <dd className="font-medium text-gray-900">{usd(b.finalAmount)}</dd>
                       </div>
                     )}

@@ -39,13 +39,13 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Technicians and admins keep their dashboard link in the navbar; customers use the avatar menu instead
+  // Every role's dashboard links live in the avatar dropdown; the navbar itself only shows the public links
   const role = session?.user.role;
   const roleLink = role === "technician" ? technicianLink : role === "admin" ? adminLink : null;
   const accountLinks = role === "customer" ? customerMenu : roleLink ? [roleLink] : [];
 
-  // Signed out: only Home. Signed in: the main links plus the dashboard link for technician/admin.
-  const navLinks = session ? (roleLink ? [...links, roleLink] : links) : [links[0]];
+  // Signed out: only Home. Signed in: the main links.
+  const navLinks = session ? links : [links[0]];
 
   // The avatar menu closes on Escape or a click outside it
   useEffect(() => {
@@ -194,9 +194,9 @@ export default function Navbar() {
                 <Avatar name={session.user.name} src={session.user.image} size={32} />
                 <p className="truncate text-sm font-medium text-gray-800">{session.user.name}</p>
               </div>
-              {role === "customer" && (
+              {accountLinks.length > 0 && (
                 <ul className="mt-2 space-y-1">
-                  {customerMenu.map((l) => (
+                  {accountLinks.map((l) => (
                     <li key={l.href}>
                       <Link href={l.href} onClick={() => setOpen(false)} className="block rounded-lg px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50">
                         {l.label}

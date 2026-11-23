@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { categoryIcon, getServiceById, type ServiceMode } from "@/lib/data/services";
+import BookServiceButton from "@/components/site/BookServiceButton";
 import { usd } from "@/lib/currency";
 
 const modeHelp: Record<ServiceMode, string> = {
@@ -59,12 +60,7 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
           </dl>
 
           {service.available ? (
-            <Link
-              href={`/services/${service.id}/book`}
-              className="mt-6 block rounded-lg bg-orange-500 px-6 py-3 text-center text-lg font-semibold text-white transition hover:bg-orange-600"
-            >
-              Book This Service
-            </Link>
+            <BookServiceButton serviceId={service.id} />
           ) : (
             <p className="mt-6 rounded-lg bg-gray-100 px-6 py-3 text-center font-semibold text-gray-600">
               Currently unavailable
