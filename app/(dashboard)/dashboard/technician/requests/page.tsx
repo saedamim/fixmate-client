@@ -6,6 +6,7 @@ import Link from "next/link";
 import { callApi, errorMessage, SESSION_EXPIRED } from "@/lib/api";
 import { formatDate, statusLabel, statusStyle, statusTextStyle, type BookingStatus as Status } from "@/lib/bookings";
 import RoleGate from "@/components/dashboard/RoleGate";
+import ConfirmDialog from "@/components/dashboard/ConfirmDialog";
 
 type Request = {
   id: string;
@@ -53,6 +54,7 @@ function RequestsManager() {
 
   const [busyId, setBusyId] = useState(""); // booking with an action in progress
   const [actionError, setActionError] = useState<{ id: string; message: string } | null>(null);
+  const [rejecting, setRejecting] = useState<Request | null>(null); // request waiting for the reject confirmation
   const [completingId, setCompletingId] = useState(""); // booking showing the final amount form
   const [amount, setAmount] = useState("");
 
@@ -130,6 +132,7 @@ function RequestsManager() {
         filter === "all" ? list.map((r) => (r.id === id ? booking : r)) : list.filter((r) => r.id !== id)
       );
       setCompletingId("");
+      setRejecting(null);
       toast.success(status === "completed" ? "Bill sent to the customer." : `Request ${statusLabel[status].toLowerCase()}.`);
       setAttempt((n) => n + 1); // quiet reload so counts and pages are correct
     } catch (err) {
@@ -313,7 +316,7 @@ function RequestsManager() {
                             <button onClick={() => updateStatus(r.id, "accepted")} disabled={busy} className={`${actionClass} bg-teal-700 text-white hover:bg-teal-800`}>
                               Accept
                             </button>
-                            <button onClick={() => updateStatus(r.id, "rejected")} disabled={busy} className={`${actionClass} border border-red-300 text-red-600 hover:bg-red-50`}>
+                            <button onClick={() => { setActionError(null); setRejecting(r); }} disabled={busy} className={`${actionClass} border border-red-300 text-red-600 hover:bg-red-50`}>
                               Reject
                             </button>
                           </div>
@@ -354,6 +357,20 @@ function RequestsManager() {
         )}
       </>
     )}
+
+      {rejecting && (
+        <ConfirmDialog
+          title="Reject this request?"
+          message={`${rejecting.serviceTitle} for ${rejecting.customerName}. The customer will see it as rejected and this cannot be undone.`}
+          confirmLabel="Yes, reject request"
+          cancelLabel="Keep request"
+          busyLabel="Rejecting..."
+          busy={busyId === rejecting.id}
+          error={actionError?.id === rejecting.id ? actionError.message : undefined}
+          onConfirm={() => updateStatus(rejecting.id, "rejected")}
+          onClose={() => setRejecting(null)}
+        />
+      )}
     </>
   );
 }

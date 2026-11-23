@@ -8,6 +8,7 @@ import { callApi, errorMessage, SESSION_EXPIRED } from "@/lib/api";
 import { formatDate, statusLabel, statusStyle, statusTextStyle, type BookingStatus as Status } from "@/lib/bookings";
 import { usd, usdMoney } from "@/lib/currency";
 import { formatDateTime, type Payment } from "@/lib/payments";
+import ConfirmDialog from "@/components/dashboard/ConfirmDialog";
 
 type Booking = {
   id: string;
@@ -71,9 +72,7 @@ export default function MyBookingsPage() {
   // Payment: the booking being sent to Stripe Checkout, and a per-booking error
   const [payingId, setPayingId] = useState("");
   const [payError, setPayError] = useState<{ id: string; message: string } | null>(null);
-  const dialogRef = useRef<HTMLDivElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const dialogOpen = confirming !== null;
 
   // Load the customer's bookings whenever the filter or page changes
   useEffect(() => {
@@ -137,52 +136,6 @@ export default function MyBookingsPage() {
     window.addEventListener("pageshow", onShow);
     return () => window.removeEventListener("pageshow", onShow);
   }, []);
-
-  // Dialog keyboard: Escape closes it, Tab stays inside it
-  useEffect(() => {
-    if (!dialogOpen) return;
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !cancelling) setConfirming(null);
-      if (e.key !== "Tab") return;
-
-      const buttons = dialogRef.current?.querySelectorAll<HTMLElement>("button:not(:disabled)");
-      if (!buttons?.length) return e.preventDefault();
-
-      const first = buttons[0];
-      const last = buttons[buttons.length - 1];
-      const active = document.activeElement;
-
-      if (!dialogRef.current?.contains(active)) {
-        e.preventDefault();
-        first.focus();
-      } else if (e.shiftKey && active === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && active === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [dialogOpen, cancelling]);
-
-  // Move focus into the dialog when it opens and give it back when it closes
-  useEffect(() => {
-    if (!dialogOpen) return;
-
-    const opener = document.activeElement;
-    const heading = headingRef.current;
-    dialogRef.current?.querySelector<HTMLElement>("button")?.focus();
-
-    return () => {
-      // The opener may be gone (its booking was cancelled), so fall back to the page heading
-      if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
-      else heading?.focus();
-    };
-  }, [dialogOpen]);
 
   const selectFilter = (value: "all" | Status) => {
     if (value === filter && page === 1) return; // already showing this list, nothing to reload
@@ -462,31 +415,18 @@ export default function MyBookingsPage() {
       {content}
 
       {confirming && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="cancel-title" className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <h2 id="cancel-title" className="text-lg font-bold text-gray-900">Cancel this booking?</h2>
-            <p className="mt-2 text-sm text-gray-600">
-              {confirming.serviceTitle} on {formatDate(confirming.preferredDate)}, {confirming.preferredTime}. This cannot be undone.
-            </p>
-
-            {cancelError && (
-              <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm font-medium text-red-600">{cancelError}</p>
-            )}
-
-            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              <button onClick={() => setConfirming(null)} disabled={cancelling} className={`${buttonClass} disabled:opacity-60`}>
-                Keep booking
-              </button>
-              <button
-                onClick={confirmCancel}
-                disabled={cancelling}
-                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {cancelling ? "Cancelling..." : "Yes, cancel booking"}
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog
+          title="Cancel this booking?"
+          message={`${confirming.serviceTitle} on ${formatDate(confirming.preferredDate)}, ${confirming.preferredTime}. This cannot be undone.`}
+          confirmLabel="Yes, cancel booking"
+          cancelLabel="Keep booking"
+          busyLabel="Cancelling..."
+          busy={cancelling}
+          error={cancelError}
+          onConfirm={confirmCancel}
+          onClose={() => setConfirming(null)}
+          fallbackFocus={headingRef}
+        />
       )}
     </main>
   );
