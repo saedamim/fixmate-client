@@ -121,6 +121,26 @@ function ServicesManager() {
     setAttempt((n) => n + 1);
   };
 
+  // Turns a service on or off for customers. Unlike Edit, this keeps its approval status.
+  const toggleAvailability = async (service: Service) => {
+    try {
+      setBusyId(service.id);
+      setActionError(null);
+      const { service: updated } = await callApi(`/api/services/${service.id}/availability`, {
+        method: "PATCH",
+        body: { available: !service.available },
+        forbiddenMessage,
+      });
+      setServices((list) => list.map((item) => (item.id === updated.id ? updated : item)));
+      toast.success(updated.available ? "Service is available for booking." : "Service is hidden from customers.");
+    } catch (err) {
+      setActionError({ id: service.id, message: errorMessage(err) });
+      toast.error(errorMessage(err));
+    } finally {
+      setBusyId("");
+    }
+  };
+
   const deleteService = async (id: string) => {
     try {
       setBusyId(id);
@@ -246,6 +266,16 @@ function ServicesManager() {
 
                     <div className="mt-4 flex gap-3">
                       <button onClick={() => openForm(s)} className={`${actionClass} bg-teal-700 text-white hover:bg-teal-800`}>Edit</button>
+                      <button
+                        role="switch"
+                        aria-checked={s.available}
+                        onClick={() => toggleAvailability(s)}
+                        disabled={busyId === s.id}
+                        title={s.available ? "Hide this service from customers" : "Show this service to customers"}
+                        className={`${actionClass} border border-gray-300 text-gray-800 hover:bg-gray-50`}
+                      >
+                        {s.available ? "Available" : "Unavailable"}
+                      </button>
                       <button
                         onClick={() => {
                           setActionError(null);
