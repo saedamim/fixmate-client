@@ -12,6 +12,10 @@ export type Service = {
   duration?: string; // estimated duration, e.g. "1-2 hours" (older services have none)
   serviceArea?: string;
   technician: string;
+  // Shown in the technician summary on the details page when the API sends them
+  technicianImage?: string | null;
+  technicianArea?: string;
+  technicianBio?: string;
   imageUrl: string | null; // ImgBB URL from the backend; null shows a placeholder
   status: "pending" | "approved" | "rejected";
   available: boolean;

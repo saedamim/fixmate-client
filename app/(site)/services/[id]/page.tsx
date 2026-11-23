@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { categoryIcon, getServiceById, type ServiceMode } from "@/lib/data/services";
+import Avatar from "@/components/site/Avatar";
 import BookServiceButton from "@/components/site/BookServiceButton";
 import { usd } from "@/lib/currency";
 
@@ -53,11 +54,31 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
                 <span className="block text-xs font-normal text-gray-600">{modeHelp[service.mode]}</span>
               </dd>
             </div>
-            <div className="flex justify-between gap-4 p-4">
-              <dt className="text-gray-600">Technician</dt>
-              <dd className="font-medium text-gray-900">{service.technician}</dd>
-            </div>
+            {service.duration && (
+              <div className="flex justify-between gap-4 p-4">
+                <dt className="text-gray-600">Estimated duration</dt>
+                <dd className="font-medium text-gray-900">{service.duration}</dd>
+              </div>
+            )}
+            {service.serviceArea && (
+              <div className="flex justify-between gap-4 p-4">
+                <dt className="text-gray-600">Service area</dt>
+                <dd className="text-right font-medium text-gray-900">{service.serviceArea}</dd>
+              </div>
+            )}
           </dl>
+
+          <section aria-labelledby="technician-title" className="mt-6 rounded-2xl border border-gray-200 bg-white p-4">
+            <h2 id="technician-title" className="text-sm text-gray-600">Your technician</h2>
+            <div className="mt-3 flex items-start gap-4">
+              <Avatar name={service.technician} src={service.technicianImage} size={56} />
+              <div className="min-w-0">
+                <p className="font-semibold text-gray-900">{service.technician}</p>
+                {service.technicianArea && <p className="text-sm text-gray-600">{service.technicianArea}</p>}
+                {service.technicianBio && <p className="mt-2 text-sm text-gray-700">{service.technicianBio}</p>}
+              </div>
+            </div>
+          </section>
 
           {service.available ? (
             <BookServiceButton serviceId={service.id} />
