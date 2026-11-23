@@ -28,7 +28,7 @@ const roleNav: Record<string, NavItem[]> = {
     { label: "Dashboard", href: "/dashboard/technician", icon: "grid", exact: true, exists: true },
     { label: "Add Service", href: "/dashboard/technician/add-service", icon: "plus", exists: true },
     { label: "My Services", href: "/dashboard/technician/my-services", icon: "wrench", exists: true },
-    { label: "Requests", href: "/dashboard/technician/requests", icon: "inbox", exists: false },
+    { label: "Requests", href: "/dashboard/technician/requests", icon: "inbox", exists: true },
   ],
   admin: [
     { label: "Dashboard", href: "/dashboard/admin", icon: "grid", exact: true, exists: true },
