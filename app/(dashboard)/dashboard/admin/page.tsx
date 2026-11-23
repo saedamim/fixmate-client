@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { callApi, errorMessage } from "@/lib/api";
-import type { BookingStatus } from "@/lib/bookings";
+import { statusTextStyle, type BookingStatus } from "@/lib/bookings";
 import { usd } from "@/lib/currency";
 import RoleGate from "@/components/dashboard/RoleGate";
 import { ErrorBox, forbiddenMessage } from "@/components/dashboard/PagedList";
@@ -54,8 +54,8 @@ function Overview() {
     { label: "Services", value: stats.services.total, note: `${stats.services.approved} approved · ${stats.services.rejected} rejected` },
     { label: "Services Awaiting Review", value: stats.services.pending, note: "Pending approval", style: "text-orange-600" },
     { label: "Total Bookings", value: stats.bookings.total, note: `${stats.bookings.cancelled} cancelled · ${stats.bookings.rejected} rejected` },
-    { label: "Pending Bookings", value: stats.bookings.requested, note: "Waiting for a technician", style: "text-orange-600" },
-    { label: "In Progress", value: stats.bookings.accepted + stats.bookings.in_progress, note: `${stats.bookings.accepted} accepted · ${stats.bookings.in_progress} started`, style: "text-sky-700" },
+    { label: "Pending Bookings", value: stats.bookings.requested, note: "Waiting for a technician", style: statusTextStyle.requested },
+    { label: "In Progress", value: stats.bookings.accepted + stats.bookings.in_progress, note: `${stats.bookings.accepted} accepted · ${stats.bookings.in_progress} started`, style: statusTextStyle.in_progress },
     { label: "Completed Bookings", value: stats.bookings.completed, note: "Work finished", style: "text-green-700" },
     { label: "Revenue", value: money(stats.revenue), note: "Confirmed payments only", style: "text-green-700" },
   ];

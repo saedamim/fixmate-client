@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
 import { callApi, errorMessage, SESSION_EXPIRED } from "@/lib/api";
-import { formatDate, statusLabel, statusStyle, type BookingStatus as Status } from "@/lib/bookings";
+import { formatDate, statusLabel, statusStyle, statusTextStyle, type BookingStatus as Status } from "@/lib/bookings";
 import { usd, usdMoney } from "@/lib/currency";
 import { formatDateTime, type Payment } from "@/lib/payments";
 
@@ -286,10 +286,10 @@ export default function MyBookingsPage() {
           <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-5" aria-label="Booking statistics">
             {[
               { label: "Total Bookings", value: counts.total, style: "text-gray-900" },
-              { label: "Pending", value: counts.requested, style: "text-orange-600" },
-              { label: "Accepted", value: counts.accepted, style: "text-teal-700" },
-              { label: "In Progress", value: counts.in_progress, style: "text-sky-700" },
-              { label: "Completed", value: counts.completed, style: "text-green-700" },
+              { label: "Pending", value: counts.requested, style: statusTextStyle.requested },
+              { label: "Accepted", value: counts.accepted, style: statusTextStyle.accepted },
+              { label: "In Progress", value: counts.in_progress, style: statusTextStyle.in_progress },
+              { label: "Completed", value: counts.completed, style: statusTextStyle.completed },
             ].map((s) => (
               <div key={s.label} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
                 <p className="text-sm text-gray-600">{s.label}</p>

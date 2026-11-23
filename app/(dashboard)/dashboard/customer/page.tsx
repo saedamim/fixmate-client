@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
 import { callApi, errorMessage, SESSION_EXPIRED } from "@/lib/api";
-import { formatDate, statusLabel, statusStyle, type BookingStatus as Status } from "@/lib/bookings";
+import { formatDate, statusLabel, statusStyle, statusTextStyle, type BookingStatus as Status } from "@/lib/bookings";
 
 type Booking = {
   id: string;
@@ -69,13 +69,12 @@ export default function CustomerOverviewPage() {
     setAttempt((n) => n + 1);
   };
 
+  // Active jobs are the ones still moving: waiting for a technician, accepted or in progress
   const stats = counts && [
-    { label: "Total Bookings", value: counts.total, style: "text-gray-900" },
-    { label: "Pending", value: counts.requested, style: "text-orange-600" },
-    { label: "Accepted", value: counts.accepted, style: "text-teal-700" },
-    { label: "In Progress", value: counts.in_progress, style: "text-sky-700" },
-    { label: "Completed", value: counts.completed, style: "text-green-700" },
-    { label: "Cancelled / Rejected", value: counts.cancelled + counts.rejected, style: "text-gray-600" },
+    { label: "Total Requests", value: counts.total, style: "text-gray-900" },
+    { label: "Active Jobs", value: counts.requested + counts.accepted + counts.in_progress, style: statusTextStyle.in_progress },
+    { label: "Completed Jobs", value: counts.completed, style: statusTextStyle.completed },
+    { label: "Cancelled / Rejected", value: counts.cancelled + counts.rejected, style: statusTextStyle.cancelled },
   ];
 
   let content: React.ReactNode;
@@ -102,8 +101,8 @@ export default function CustomerOverviewPage() {
     content = (
       <>
         {loading ? (
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6" aria-busy="true">
-            {[1, 2, 3, 4, 5, 6].map((n) => (
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4" aria-busy="true">
+            {[1, 2, 3, 4].map((n) => (
               <div key={n} className="h-24 animate-pulse rounded-2xl bg-gray-200" />
             ))}
           </div>
@@ -117,7 +116,7 @@ export default function CustomerOverviewPage() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
               {stats?.map((s) => (
                 <div key={s.label} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
                   <p className="text-sm text-gray-600">{s.label}</p>

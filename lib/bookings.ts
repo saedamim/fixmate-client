@@ -11,13 +11,24 @@ export const statusLabel: Record<BookingStatus, string> = {
   rejected: "Rejected",
 };
 
+// One colour per status everywhere: Requested blue, Accepted indigo, In Progress amber, Completed green, Rejected red, Cancelled gray
 export const statusStyle: Record<BookingStatus, string> = {
-  requested: "bg-orange-50 text-orange-600",
-  accepted: "bg-teal-50 text-teal-700",
-  in_progress: "bg-sky-50 text-sky-700",
+  requested: "bg-blue-50 text-blue-700",
+  accepted: "bg-indigo-50 text-indigo-700",
+  in_progress: "bg-amber-50 text-amber-700",
   completed: "bg-green-50 text-green-700",
   cancelled: "bg-gray-100 text-gray-600",
   rejected: "bg-red-50 text-red-600",
+};
+
+// The same colours as plain text, for the number on a stats card
+export const statusTextStyle: Record<BookingStatus, string> = {
+  requested: "text-blue-700",
+  accepted: "text-indigo-700",
+  in_progress: "text-amber-600",
+  completed: "text-green-700",
+  cancelled: "text-gray-600",
+  rejected: "text-red-600",
 };
 
 export const formatDate = (date: string) =>

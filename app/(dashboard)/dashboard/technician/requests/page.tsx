@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { callApi, errorMessage, SESSION_EXPIRED } from "@/lib/api";
-import { formatDate, statusLabel, statusStyle, type BookingStatus as Status } from "@/lib/bookings";
+import { formatDate, statusLabel, statusStyle, statusTextStyle, type BookingStatus as Status } from "@/lib/bookings";
 import RoleGate from "@/components/dashboard/RoleGate";
 
 type Request = {
@@ -151,10 +151,10 @@ function RequestsManager() {
 
   const summary = [
     { label: "Total Requests", value: counts?.total ?? 0, style: "text-gray-900" },
-    { label: "New Requests", value: counts?.requested ?? 0, style: "text-orange-600" },
-    { label: "Accepted", value: counts?.accepted ?? 0, style: "text-teal-700" },
-    { label: "In Progress", value: counts?.in_progress ?? 0, style: "text-sky-700" },
-    { label: "Completed", value: counts?.completed ?? 0, style: "text-green-700" },
+    { label: "New Requests", value: counts?.requested ?? 0, style: statusTextStyle.requested },
+    { label: "Accepted", value: counts?.accepted ?? 0, style: statusTextStyle.accepted },
+    { label: "In Progress", value: counts?.in_progress ?? 0, style: statusTextStyle.in_progress },
+    { label: "Completed", value: counts?.completed ?? 0, style: statusTextStyle.completed },
   ];
 
   return (
