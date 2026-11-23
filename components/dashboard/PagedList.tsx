@@ -42,6 +42,7 @@ export function PagedList<T extends { id: string }>({
   listKey,
   forbidden = forbiddenMessage,
   empty,
+  initialFilter = "all",
 }: {
   path: string; // e.g. "/api/admin/users"; the response must hold a list named after it
   filterName: string; // query parameter used by the filter ("role" or "status")
@@ -52,10 +53,11 @@ export function PagedList<T extends { id: string }>({
   listKey?: string; // name of the list in the response (default: the last part of `path`)
   forbidden?: string; // shown when the API answers 403
   empty?: React.ReactNode; // shown instead of "No <noun> found." when there is nothing at all
+  initialFilter?: string; // filter selected on first load (default "all")
 }) {
   const key = listKey ?? (path.split("/").pop() as string);
 
-  const [filter, setFilter] = useState("all");
+  const [filter, setFilter] = useState(initialFilter);
   const [page, setPage] = useState(1);
   const [attempt, setAttempt] = useState(0); // changes to reload the list
   const [items, setItems] = useState<T[]>([]);

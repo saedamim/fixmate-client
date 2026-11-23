@@ -1,9 +1,11 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useSession } from "@/lib/auth-client";
+import { callApi } from "@/lib/api";
 import { usdMoney } from "@/lib/currency";
 import { formatDateTime, paymentStatusLabel, paymentStatusOptions, paymentStatusStyle, shortId, type Transaction } from "@/lib/payments";
+import RoleGate from "@/components/dashboard/RoleGate";
 import { PagedList, forbiddenMessage } from "@/components/dashboard/PagedList";
 
 function TransactionRows({ transactions }: { transactions: Transaction[] }) {
@@ -59,57 +61,61 @@ function TransactionRows({ transactions }: { transactions: Transaction[] }) {
   );
 }
 
+// Total confirmed revenue (from the same stats endpoint as the admin overview); hidden if it cannot be loaded
+function Revenue() {
+  const [revenue, setRevenue] = useState<number | null>(null);
+
+  useEffect(() => {
+    let ignore = false;
+    callApi("/api/admin/stats", { forbiddenMessage })
+      .then((stats) => !ignore && setRevenue(stats.revenue))
+      .catch(() => {});
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  if (revenue === null) return null;
+  return (
+    <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+      <p className="text-sm text-gray-600">Total revenue</p>
+      <p className="mt-1 text-3xl font-bold text-green-700">{usdMoney(revenue)}</p>
+      <p className="mt-1 text-xs text-gray-500">Confirmed payments only</p>
+    </div>
+  );
+}
+
 // Transactions: real payment records from GET /api/admin/transactions (admins only).
 export default function AdminTransactionsPage() {
-  const { data: session, isPending } = useSession();
-
-  let content: React.ReactNode;
-
-  if (isPending) {
-    content = <div className="h-40 animate-pulse rounded-2xl bg-gray-200" aria-busy="true" />;
-  } else if (!session) {
-    content = (
-      <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
-        <p className="text-gray-700">Please sign in with an admin account to view transactions.</p>
-        <Link href="/sign-in?redirect=/dashboard/admin/transactions" className="mt-5 inline-block rounded-lg bg-orange-500 px-6 py-3 font-semibold text-white transition hover:bg-orange-600">
-          Sign in
-        </Link>
-      </div>
-    );
-  } else if (session.user.role !== "admin") {
-    content = (
-      <p className="rounded-2xl bg-orange-50 p-6 text-sm font-medium text-orange-700">
-        Only admin accounts can view transactions.
-        {session.user.role && ` You are signed in as a ${session.user.role}.`}
-      </p>
-    );
-  } else {
-    content = (
-      <PagedList<Transaction>
-        path="/api/admin/transactions"
-        listKey="transactions"
-        filterName="status"
-        options={paymentStatusOptions}
-        noun="transactions"
-        forbidden={forbiddenMessage}
-        signInPath="/dashboard/admin/transactions"
-        render={(transactions) => <TransactionRows transactions={transactions} />}
-        empty={
-          <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-10 text-center text-gray-600">
-            <p className="text-lg font-semibold text-gray-900">No transactions yet</p>
-            <p className="mt-2 text-sm">Payments made by customers will appear here.</p>
-          </div>
-        }
-      />
-    );
-  }
-
   return (
     <main className="mx-auto max-w-6xl px-4 py-10">
       <Link href="/dashboard/admin" className="text-sm font-semibold text-teal-700 hover:underline">← Admin Dashboard</Link>
       <h1 className="mt-4 text-3xl font-bold text-gray-900">Transactions</h1>
       <p className="mt-2 mb-8 text-gray-600">Every payment attempt made on FixMate.</p>
-      {content}
+
+      <RoleGate role="admin" action="view transactions" signInPath="/dashboard/admin/transactions">
+        {() => (
+          <>
+            <Revenue />
+            <PagedList<Transaction>
+              path="/api/admin/transactions"
+              listKey="transactions"
+              filterName="status"
+              options={paymentStatusOptions}
+              noun="transactions"
+              forbidden={forbiddenMessage}
+              signInPath="/dashboard/admin/transactions"
+              render={(transactions) => <TransactionRows transactions={transactions} />}
+              empty={
+                <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-10 text-center text-gray-600">
+                  <p className="text-lg font-semibold text-gray-900">No transactions yet</p>
+                  <p className="mt-2 text-sm">Payments made by customers will appear here.</p>
+                </div>
+              }
+            />
+          </>
+        )}
+      </RoleGate>
     </main>
   );
 }

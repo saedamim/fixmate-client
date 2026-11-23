@@ -14,34 +14,33 @@ type NavItem = {
   icon: IconName;
   exact?: boolean; // a section's root page is only active on that exact path
   aliases?: string[]; // other URLs of the same page that also highlight this item
-  exists: boolean; // false: the page is not built yet, so the item is shown disabled (no link, no fake page)
 };
 
 // What each role sees. The role always comes from the signed-in session, never from the client.
 const roleNav: Record<string, NavItem[]> = {
   customer: [
-    { label: "Overview", href: "/dashboard/customer", icon: "grid", exact: true, exists: true },
-    { label: "My Bookings", href: "/dashboard/customer/bookings", icon: "calendar", aliases: ["/dashboard/my-bookings"], exists: true },
-    { label: "Payment History", href: "/dashboard/customer/payments", icon: "card", exists: true },
+    { label: "Overview", href: "/dashboard/customer", icon: "grid", exact: true },
+    { label: "My Bookings", href: "/dashboard/customer/bookings", icon: "calendar", aliases: ["/dashboard/my-bookings"] },
+    { label: "Payment History", href: "/dashboard/customer/payments", icon: "card" },
   ],
   technician: [
-    { label: "Dashboard", href: "/dashboard/technician", icon: "grid", exact: true, exists: true },
-    { label: "Add Service", href: "/dashboard/technician/add-service", icon: "plus", exists: true },
-    { label: "My Services", href: "/dashboard/technician/my-services", icon: "wrench", exists: true },
-    { label: "Requests", href: "/dashboard/technician/requests", icon: "inbox", exists: true },
+    { label: "Dashboard", href: "/dashboard/technician", icon: "grid", exact: true },
+    { label: "Add Service", href: "/dashboard/technician/add-service", icon: "plus" },
+    { label: "My Services", href: "/dashboard/technician/my-services", icon: "wrench" },
+    { label: "Requests", href: "/dashboard/technician/requests", icon: "inbox" },
   ],
   admin: [
-    { label: "Dashboard", href: "/dashboard/admin", icon: "grid", exact: true, exists: true },
-    { label: "Manage Users", href: "/dashboard/admin/users", icon: "users", exists: false },
-    { label: "Manage Services", href: "/dashboard/admin/services", icon: "box", exists: false },
-    { label: "Manage Bookings", href: "/dashboard/admin/bookings", icon: "calendar", exists: false },
-    { label: "Transactions", href: "/dashboard/admin/transactions", icon: "receipt", exists: true },
+    { label: "Dashboard", href: "/dashboard/admin", icon: "grid", exact: true },
+    { label: "Manage Users", href: "/dashboard/admin/users", icon: "users" },
+    { label: "Manage Services", href: "/dashboard/admin/services", icon: "box" },
+    { label: "Manage Bookings", href: "/dashboard/admin/bookings", icon: "calendar" },
+    { label: "Transactions", href: "/dashboard/admin/transactions", icon: "receipt" },
   ],
 };
 
 const commonNav: NavItem[] = [
-  { label: "Update Profile", href: "/dashboard/profile", icon: "user", exists: true },
-  { label: "Back to site", href: "/", icon: "home", exact: true, exists: true },
+  { label: "Update Profile", href: "/dashboard/profile", icon: "user" },
+  { label: "Back to site", href: "/", icon: "home", exact: true },
 ];
 
 const iconPaths: Record<IconName, string> = {
@@ -141,32 +140,20 @@ export default function DashboardShell({ children }: { children: React.ReactNode
           ) : (
             <ul className="space-y-1">
               {items.map((item, index) => {
-                const active = item.exists && isActive(item);
+                const active = isActive(item);
                 const divider = index > 0 && item.href === "/dashboard/profile"; // separates the common links
                 return (
                   <li key={item.href} className={divider ? "mt-3 border-t border-gray-100 pt-3" : ""}>
-                    {item.exists ? (
-                      <Link
-                        href={item.href}
-                        onClick={() => setMobileOpen(false)}
-                        aria-current={active ? "page" : undefined}
-                        title={collapsed ? item.label : undefined}
-                        className={itemClass(active)}
-                      >
-                        <Icon name={item.icon} className="h-5 w-5 shrink-0" />
-                        <span className={labelClass}>{item.label}</span>
-                      </Link>
-                    ) : (
-                      <span
-                        aria-disabled="true"
-                        title={`${item.label} (coming soon)`}
-                        className={`flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-400 ${collapsed ? "md:justify-center md:px-0" : ""}`}
-                      >
-                        <Icon name={item.icon} className="h-5 w-5 shrink-0" />
-                        <span className={`${labelClass} flex-1`}>{item.label}</span>
-                        <span className={`${labelClass} rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-gray-500`}>Soon</span>
-                      </span>
-                    )}
+                    <Link
+                      href={item.href}
+                      onClick={() => setMobileOpen(false)}
+                      aria-current={active ? "page" : undefined}
+                      title={collapsed ? item.label : undefined}
+                      className={itemClass(active)}
+                    >
+                      <Icon name={item.icon} className="h-5 w-5 shrink-0" />
+                      <span className={labelClass}>{item.label}</span>
+                    </Link>
                   </li>
                 );
               })}
