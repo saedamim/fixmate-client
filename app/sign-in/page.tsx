@@ -1,6 +1,7 @@
 
 "use client";
 
+import { toast } from "sonner";
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -42,13 +43,17 @@ function SignInForm() {
 
       if (error) {
         setError(error.message || "Invalid email or password");
+        toast.error(error.message || "Invalid email or password");
         return;
       }
+
+      toast.success("Signed in successfully.");
 
       router.push(redirect);
       router.refresh();
     } catch {
       setError("Something went wrong. Please try again.");
+      toast.error("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }

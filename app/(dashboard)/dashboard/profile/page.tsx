@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "sonner";
 import { useState } from "react";
 import { authClient, useSession } from "@/lib/auth-client";
 
@@ -23,6 +24,8 @@ export default function UpdateProfilePage() {
     try {
       const { error } = await authClient.updateUser({ name: trimmed });
       setMessage(error ? { ok: false, text: error.message || "Could not update your profile." } : { ok: true, text: "Profile updated." });
+      if (error) toast.error(error.message || "Could not update your profile.");
+      else toast.success("Profile updated.");
       if (!error) setTyped(null);
     } catch {
       setMessage({ ok: false, text: "Could not reach the server. Please try again." });

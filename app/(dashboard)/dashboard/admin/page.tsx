@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
@@ -139,9 +140,11 @@ function UserRows({ users, reload, currentUserId }: { users: User[]; reload: () 
       setBusyId(id);
       setActionError(null);
       await callApi(`/api/admin/users/${id}/role`, { method: "PATCH", body: { role }, forbiddenMessage });
+      toast.success(`Role changed to ${role}.`);
       reload();
     } catch (err) {
       setActionError({ id, message: errorMessage(err) });
+      toast.error(errorMessage(err));
     } finally {
       setBusyId("");
     }
@@ -194,9 +197,11 @@ function ServiceRows({ services, reload }: { services: Service[]; reload: () => 
       setBusyId(id);
       setActionError(null);
       await callApi(`/api/admin/services/${id}/status`, { method: "PATCH", body: { status }, forbiddenMessage });
+      toast.success(`Service ${status}.`);
       reload();
     } catch (err) {
       setActionError({ id, message: errorMessage(err) });
+      toast.error(errorMessage(err));
     } finally {
       setBusyId("");
     }

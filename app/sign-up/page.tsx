@@ -1,6 +1,7 @@
 
 "use client";
 
+import { toast } from "sonner";
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -56,6 +57,7 @@ function SignUpForm() {
     const found = validate(name, email, password, confirmPassword);
     setErrors(found);
     if (Object.keys(found).length > 0) {
+      toast.error("Please fix the highlighted fields.");
       return;
     }
 
@@ -72,15 +74,18 @@ function SignUpForm() {
 
       if (error) {
         setError(error.message || "Registration failed");
+        toast.error(error.message || "Registration failed");
         return;
       }
 
+      toast.success("Account created. Welcome to FixMate!");
 
       // Without a page to return to, go to the new account's own dashboard
       router.push(redirect === "/" ? dashboardPath(role) : redirect);
       router.refresh();
     } catch {
       setError("Something went wrong. Please try again.");
+      toast.error("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }

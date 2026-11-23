@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
@@ -164,9 +165,11 @@ export default function TechnicianDashboardPage() {
         filter === "all" ? list.map((r) => (r.id === id ? booking : r)) : list.filter((r) => r.id !== id)
       );
       setCompletingId("");
+      toast.success(status === "completed" ? "Bill sent to the customer." : `Request ${statusLabel[status].toLowerCase()}.`);
       setAttempt((n) => n + 1); // quiet reload so counts and pages are correct
     } catch (err) {
       setActionError({ id, message: errorMessage(err) });
+      toast.error(errorMessage(err));
     } finally {
       setBusyId("");
     }

@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "sonner";
 import { useState } from "react";
 import { callApi, errorMessage } from "@/lib/api";
 import { useSession } from "@/lib/auth-client";
@@ -122,6 +123,7 @@ export default function ServiceForm({
         forbiddenMessage,
       });
 
+      toast.success(isNew ? "Service submitted. It is waiting for admin approval." : "Service updated. It is waiting for admin approval again.");
       onSaved(
         isNew
           ? "Service submitted for review. An admin must approve it before customers can see it."
@@ -129,6 +131,7 @@ export default function ServiceForm({
       );
     } catch (err) {
       setFormError(errorMessage(err));
+      toast.error(errorMessage(err));
       setSaving(false);
     }
   };

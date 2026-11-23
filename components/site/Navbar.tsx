@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "sonner";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -65,6 +66,7 @@ export default function Navbar() {
     setMenuOpen(false);
     try {
       await signOut(); // updates useSession everywhere, so the Navbar changes straight away
+      toast.success("You have been signed out.");
     } finally {
       router.push("/");
       router.refresh();

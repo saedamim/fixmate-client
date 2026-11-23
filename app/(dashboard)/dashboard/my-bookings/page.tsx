@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "sonner";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
@@ -226,8 +227,10 @@ export default function MyBookingsPage() {
       }
       setAttempt((n) => n + 1); // quiet reload so the stats, page count and page contents are correct
       setConfirming(null);
+      toast.success("Booking cancelled.");
     } catch (err) {
       setCancelError(errorMessage(err));
+      toast.error(errorMessage(err));
     } finally {
       setCancelling(false);
     }
@@ -246,6 +249,7 @@ export default function MyBookingsPage() {
       window.location.assign(url); // stay locked ("Redirecting...") while the browser leaves
     } catch (err) {
       setPayError({ id, message: errorMessage(err) });
+      toast.error(errorMessage(err));
       setPayingId("");
     }
   };

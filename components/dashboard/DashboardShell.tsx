@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -95,6 +96,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
   const handleLogout = async () => {
     try {
       await signOut(); // the existing Better Auth sign out
+      toast.success("You have been signed out.");
     } finally {
       router.push("/");
       router.refresh();

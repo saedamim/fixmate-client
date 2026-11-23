@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "sonner";
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -102,13 +103,18 @@ export default function BookingForm({ serviceId, mode }: { serviceId: string; mo
       const result = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        setApiError(apiErrorMessage(response.status, result.message));
+        const message = apiErrorMessage(response.status, result.message);
+        setApiError(message);
+        toast.error(message);
         return;
       }
+
+      toast.success("Repair request sent. Track it in My Bookings.");
 
       setBooked({ date: result.booking.preferredDate, time: result.booking.preferredTime });
     } catch {
       setApiError("Could not reach the server. Please try again.");
+      toast.error("Could not reach the server. Please try again.");
     } finally {
       setLoading(false);
     }

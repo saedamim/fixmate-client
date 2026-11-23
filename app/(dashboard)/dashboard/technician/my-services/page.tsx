@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
@@ -132,9 +133,11 @@ export default function MyServicesPage() {
 
       setConfirmId("");
       setSuccess("Service deleted.");
+      toast.success("Service deleted.");
       setAttempt((n) => n + 1); // quiet reload so the list, counts and pages are correct
     } catch (err) {
       setActionError({ id, message: errorMessage(err) });
+      toast.error(errorMessage(err));
     } finally {
       setBusyId("");
     }

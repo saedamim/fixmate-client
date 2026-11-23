@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "sonner";
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -47,7 +48,10 @@ function Confirmation() {
       .then((data) => {
         if (ignore) return;
         // Only an explicit "paid" record from the backend is shown as a success
-        if (data.payment?.status === "paid") setResult({ kind: "paid", payment: data.payment });
+        if (data.payment?.status === "paid") {
+          setResult({ kind: "paid", payment: data.payment });
+          toast.success("Payment confirmed. Thank you!");
+        }
         else setResult({ kind: "error", message: "We could not confirm this payment. Please check your payment history." });
       })
       .catch((err) => {
