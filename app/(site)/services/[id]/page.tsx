@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { categoryIcon, getServiceById, type ServiceMode } from "@/lib/data/services";
+import { getServiceById } from "@/lib/data/services-api";
+import { categoryIcon, type ServiceMode } from "@/lib/data/services";
 import Avatar from "@/components/site/Avatar";
 import BookServiceButton from "@/components/site/BookServiceButton";
 import { usd } from "@/lib/currency";

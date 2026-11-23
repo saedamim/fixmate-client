@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "@/lib/auth-client";
+import { clearApiToken } from "@/lib/api";
 import Avatar from "./Avatar";
 
 const links = [
@@ -66,6 +67,7 @@ export default function Navbar() {
     setMenuOpen(false);
     try {
       await signOut(); // updates useSession everywhere, so the Navbar changes straight away
+      clearApiToken();
       toast.success("You have been signed out.");
     } finally {
       router.push("/");

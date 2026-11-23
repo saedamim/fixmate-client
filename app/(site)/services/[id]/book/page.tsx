@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import BookingForm from "@/components/site/BookingForm";
-import { categoryIcon, getServiceById } from "@/lib/data/services";
+import { getServiceById } from "@/lib/data/services-api";
+import { categoryIcon } from "@/lib/data/services";
 import { usd } from "@/lib/currency";
 
 // Booking page: the selected service summary and the booking form.

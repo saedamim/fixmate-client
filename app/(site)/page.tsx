@@ -1,9 +1,9 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { connection } from "next/server";
 import ServiceCard from "@/components/site/ServiceCard";
 import BookingActivityCard from "@/components/site/BookingActivityCard";
-import { categories, features, getLatestServices, getRecentActivity, stats, steps, testimonials, type Service } from "@/lib/data/services";
+import { getLatestServices } from "@/lib/data/services-api";
+import { categories, features, getRecentActivity, stats, steps, testimonials, type Service } from "@/lib/data/services";
 
 function SectionHeading({ title, subtitle }: { title: string; subtitle: string }) {
   return (
@@ -28,8 +28,6 @@ function FeaturedSkeleton() {
 
 // Fetches from the backend API; shows an error or empty message instead of crashing the page
 async function FeaturedServices() {
-  await connection(); // fetch at request time, not while prerendering
-
   let featured: Service[];
 
   try {

@@ -19,18 +19,60 @@ type Options = {
 };
 
 
-export async function callApi(path: string, { method = "GET", body, forbiddenMessage }: Options = {}) {
-  const { data, error } = await authClient.token();
-  if (error || !data?.token) throw new Error(SESSION_EXPIRED);
+// Asking for a token is a network round trip, and a dashboard makes several API calls at once. So the token is kept
+// until shortly before it expires, and the calls that start together share one request.
+let cachedToken: { value: string; expiresAt: number } | null = null;
+let pendingToken: Promise<string> | null = null;
 
-  const response = await fetch(`${API_URL}${path}`, {
-    method,
-    headers: {
-      Authorization: `Bearer ${data.token}`,
-      ...(body && { "Content-Type": "application/json" }),
-    },
-    body: body && JSON.stringify(body),
-  });
+// Forget the token when the user signs in or out, so the next call never sends someone else's
+export const clearApiToken = () => {
+  cachedToken = null;
+  pendingToken = null;
+};
+
+// The `exp` claim of a JWT, in milliseconds (0 when it cannot be read, so the token is not reused)
+const tokenExpiry = (token: string) => {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+    return typeof payload.exp === "number" ? payload.exp * 1000 : 0;
+  } catch {
+    return 0;
+  }
+};
+
+async function getToken(): Promise<string> {
+  if (cachedToken && cachedToken.expiresAt - Date.now() > 30_000) return cachedToken.value;
+
+  pendingToken ??= authClient
+    .token()
+    .then(({ data, error }) => {
+      if (error || !data?.token) throw new Error(SESSION_EXPIRED);
+      cachedToken = { value: data.token, expiresAt: tokenExpiry(data.token) };
+      return data.token;
+    })
+    .finally(() => {
+      pendingToken = null;
+    });
+  return pendingToken;
+}
+
+export async function callApi(path: string, { method = "GET", body, forbiddenMessage }: Options = {}) {
+  const send = async (token: string) =>
+    fetch(`${API_URL}${path}`, {
+      method,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...(body && { "Content-Type": "application/json" }),
+      },
+      body: body && JSON.stringify(body),
+    });
+
+  let response = await send(await getToken());
+  if (response.status === 401) {
+    // The cached token may have been rejected (for example after a server restart): try once with a fresh one
+    clearApiToken();
+    response = await send(await getToken());
+  }
   const result = await response.json().catch(() => ({}));
 
   if (!response.ok) {

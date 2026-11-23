@@ -1,7 +1,8 @@
 import Link from "next/link";
 import ServiceCard from "@/components/site/ServiceCard";
 import ServiceFilters from "@/components/site/ServiceFilters";
-import { categories, getServices, serviceModes } from "@/lib/data/services";
+import { getServices } from "@/lib/data/services-api";
+import { categories, serviceModes } from "@/lib/data/services";
 
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
 

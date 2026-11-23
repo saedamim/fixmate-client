@@ -56,35 +56,6 @@ export type ServicesResult = {
 };
 
 
-export async function getServices(filters: ServiceFilters = {}): Promise<ServicesResult> {
-  const query = new URLSearchParams();
-  for (const [key, value] of Object.entries(filters)) {
-    if (value) query.set(key, String(value)); // skip empty filters
-  }
-
-  const response = await fetch(`${API_URL}/api/services?${query}`);
-  if (!response.ok) throw new Error(`Services API responded with ${response.status}`);
-
-  return response.json();
-}
-
-
-export async function getServiceById(id: string): Promise<Service | null> {
-  const response = await fetch(`${API_URL}/api/services/${encodeURIComponent(id)}`);
-  if (response.status === 404) return null;
-  if (!response.ok) throw new Error(`Services API responded with ${response.status}`);
-
-  return response.json();
-}
-
-
-// The 6 newest approved services, for the Home page (the API already returns only approved ones)
-export async function getLatestServices(): Promise<Service[]> {
-  const { services } = await getServices({ sort: "newest", limit: 6 });
-
-  return services.filter((s) => s.available);
-}
-
 export type BookingActivity = {
   id: string;
   service: string;

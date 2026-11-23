@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "@/lib/auth-client";
+import { clearApiToken } from "@/lib/api";
 
 type IconName = "home" | "grid" | "calendar" | "card" | "plus" | "wrench" | "inbox" | "users" | "box" | "receipt" | "user";
 
@@ -95,6 +96,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
   const handleLogout = async () => {
     try {
       await signOut(); // the existing Better Auth sign out
+      clearApiToken();
       toast.success("You have been signed out.");
     } finally {
       router.push("/");
