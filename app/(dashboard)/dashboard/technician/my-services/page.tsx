@@ -3,8 +3,9 @@
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useSession } from "@/lib/auth-client";
 import { callApi, errorMessage, SESSION_EXPIRED } from "@/lib/api";
+import RoleGate from "@/components/dashboard/RoleGate";
+import ConfirmDialog from "@/components/dashboard/ConfirmDialog";
 import ServiceForm, { forbiddenMessage } from "@/components/site/ServiceForm";
 import { categoryIcon, type Service } from "@/lib/data/services";
 import { usd } from "@/lib/currency";
@@ -37,10 +38,7 @@ const buttonClass =
   "rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-800 transition hover:bg-gray-50";
 const actionClass = "rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60";
 
-export default function MyServicesPage() {
-  const { data: session, isPending } = useSession();
-  const isTechnician = session?.user.role === "technician";
-
+function ServicesManager() {
   const [filter, setFilter] = useState<"all" | ServiceStatus>("all");
   const [page, setPage] = useState(1);
   const [attempt, setAttempt] = useState(0); // changes to reload the list
@@ -55,15 +53,13 @@ export default function MyServicesPage() {
   // The service being edited (the form is shown in place), or null
   const [editing, setEditing] = useState<Service | null>(null);
 
-  // Delete: confirmId shows the inline "are you sure" on one card
-  const [confirmId, setConfirmId] = useState("");
+  // Delete: the service waiting for the confirmation dialog
+  const [deleting, setDeleting] = useState<Service | null>(null);
   const [busyId, setBusyId] = useState("");
   const [actionError, setActionError] = useState<{ id: string; message: string } | null>(null);
 
   // Load this technician's services whenever the filter or page changes
   useEffect(() => {
-    if (!isTechnician) return;
-
     let ignore = false;
     const query = new URLSearchParams({ page: String(page), limit: "9" });
     if (filter !== "all") query.set("status", filter);
@@ -92,7 +88,7 @@ export default function MyServicesPage() {
     return () => {
       ignore = true;
     };
-  }, [isTechnician, filter, page, attempt]);
+  }, [filter, page, attempt]);
 
   const selectFilter = (value: "all" | ServiceStatus) => {
     if (value === filter && page === 1) return;
@@ -131,7 +127,7 @@ export default function MyServicesPage() {
       setActionError(null);
       await callApi(`/api/services/${id}`, { method: "DELETE", forbiddenMessage });
 
-      setConfirmId("");
+      setDeleting(null);
       setSuccess("Service deleted.");
       toast.success("Service deleted.");
       setAttempt((n) => n + 1); // quiet reload so the list, counts and pages are correct
@@ -150,173 +146,155 @@ export default function MyServicesPage() {
     { label: "Rejected", value: counts?.rejected ?? 0, style: "text-red-600" },
   ];
 
-  let content: React.ReactNode;
+  return (
+    <>
+      {success && (
+        <p role="status" className="mb-6 rounded-lg bg-green-50 p-4 text-sm font-medium text-green-800">{success}</p>
+      )}
 
-  if (isPending) {
-    content = <div className="h-40 animate-pulse rounded-2xl bg-gray-200" aria-busy="true" />;
-  } else if (!session) {
-    content = (
-      <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
-        <p className="text-gray-700">Please sign in with a technician account to manage services.</p>
-        <Link href="/sign-in?redirect=/dashboard/technician/my-services" className="mt-5 inline-block rounded-lg bg-orange-500 px-6 py-3 font-semibold text-white transition hover:bg-orange-600">
-          Sign in
-        </Link>
-      </div>
-    );
-  } else if (!isTechnician) {
-    content = (
-      <p className="rounded-2xl bg-orange-50 p-6 text-sm font-medium text-orange-700">
-        Only technician accounts can manage services.
-        {session.user.role && ` You are signed in as a ${session.user.role}.`}
-      </p>
-    );
-  } else {
-    content = (
-      <>
-        {success && (
-          <p role="status" className="mb-6 rounded-lg bg-green-50 p-4 text-sm font-medium text-green-800">{success}</p>
-        )}
+      {editing && (
+        <div className="mb-8">
+          <ServiceForm key={editing.id} service={editing} onSaved={handleSaved} onCancel={() => setEditing(null)} />
+        </div>
+      )}
 
-        {editing && (
-          <div className="mb-8">
-            <ServiceForm key={editing.id} service={editing} onSaved={handleSaved} onCancel={() => setEditing(null)} />
+      {loading && !counts ? (
+        <div className="grid gap-4 md:grid-cols-2" aria-busy="true">
+          {[1, 2, 3, 4].map((n) => (
+            <div key={n} className="h-44 animate-pulse rounded-2xl bg-gray-200" />
+          ))}
+        </div>
+      ) : error && !counts ? (
+        <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
+          <p className="font-medium text-red-600">{error}</p>
+          <div className="mt-4 flex justify-center gap-3">
+            <button onClick={retry} className="rounded-lg bg-orange-500 px-5 py-2 font-semibold text-white transition hover:bg-orange-600">Try again</button>
+            {error === SESSION_EXPIRED && <Link href="/sign-in?redirect=/dashboard/technician/my-services" className={buttonClass}>Sign in</Link>}
           </div>
-        )}
-
-        {loading && !counts ? (
-          <div className="grid gap-4 md:grid-cols-2" aria-busy="true">
-            {[1, 2, 3, 4].map((n) => (
-              <div key={n} className="h-44 animate-pulse rounded-2xl bg-gray-200" />
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            {summary.map((s) => (
+              <div key={s.label} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                <p className="text-sm text-gray-600">{s.label}</p>
+                <p className={`mt-1 text-3xl font-bold ${s.style}`}>{s.value}</p>
+              </div>
             ))}
           </div>
-        ) : error && !counts ? (
-          <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
-            <p className="font-medium text-red-600">{error}</p>
-            <div className="mt-4 flex justify-center gap-3">
-              <button onClick={retry} className="rounded-lg bg-orange-500 px-5 py-2 font-semibold text-white transition hover:bg-orange-600">Try again</button>
-              {error === SESSION_EXPIRED && <Link href="/sign-in?redirect=/dashboard/technician/my-services" className={buttonClass}>Sign in</Link>}
-            </div>
+
+          <div className="mt-8 flex gap-2 overflow-x-auto pb-2" role="group" aria-label="Filter by status">
+            {filters.map((f) => (
+              <button
+                key={f.value}
+                type="button"
+                onClick={() => selectFilter(f.value)}
+                aria-pressed={filter === f.value}
+                className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                  filter === f.value ? "border-teal-700 bg-teal-700 text-white" : "border-gray-300 bg-white text-gray-800 hover:bg-gray-50"
+                }`}
+              >
+                {f.label} ({counts?.[f.value === "all" ? "total" : f.value] ?? 0})
+              </button>
+            ))}
           </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-              {summary.map((s) => (
-                <div key={s.label} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-                  <p className="text-sm text-gray-600">{s.label}</p>
-                  <p className={`mt-1 text-3xl font-bold ${s.style}`}>{s.value}</p>
-                </div>
+
+          {loading ? (
+            <div className="mt-4 grid gap-4 md:grid-cols-2" aria-busy="true">
+              {[1, 2, 3, 4].map((n) => (
+                <div key={n} className="h-44 animate-pulse rounded-2xl bg-gray-200" />
               ))}
             </div>
-
-            <div className="mt-8 flex gap-2 overflow-x-auto pb-2" role="group" aria-label="Filter by status">
-              {filters.map((f) => (
-                <button
-                  key={f.value}
-                  type="button"
-                  onClick={() => selectFilter(f.value)}
-                  aria-pressed={filter === f.value}
-                  className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition ${
-                    filter === f.value ? "border-teal-700 bg-teal-700 text-white" : "border-gray-300 bg-white text-gray-800 hover:bg-gray-50"
-                  }`}
-                >
-                  {f.label} ({counts?.[f.value === "all" ? "total" : f.value] ?? 0})
-                </button>
-              ))}
+          ) : error ? (
+            <div role="alert" className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
+              <p className="font-medium text-red-600">{error}</p>
+              <button onClick={retry} className="mt-4 rounded-lg bg-orange-500 px-5 py-2 font-semibold text-white transition hover:bg-orange-600">Try again</button>
             </div>
+          ) : services.length === 0 ? (
+            <div className="mt-4 rounded-2xl border border-dashed border-gray-300 p-10 text-center text-gray-600">
+              <p>{filter === "all" ? "You have not added any services yet." : `You have no ${filter} services.`}</p>
+              {filter === "all" && (
+                <Link href="/dashboard/technician/add-service" className="mt-4 inline-block font-semibold text-teal-700 hover:underline">Add your first service →</Link>
+              )}
+            </div>
+          ) : (
+            <>
+              <p className="mt-4 text-sm text-gray-600">{total} {total === 1 ? "service" : "services"}</p>
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                {services.map((s) => (
+                  <article key={s.id} className="flex flex-col rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                    <div className="flex items-start gap-4">
+                      {s.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={s.imageUrl} alt="" className="h-16 w-20 shrink-0 rounded-lg object-cover" />
+                      ) : (
+                        <div className="flex h-16 w-20 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-3xl" aria-hidden>{categoryIcon(s.category)}</div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-3">
+                          <h3 className="font-semibold text-gray-900">{s.title}</h3>
+                          <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${statusStyle[s.status]}`}>{statusLabel[s.status]}</span>
+                        </div>
+                        <p className="mt-1 text-sm text-gray-600">{s.category} · {s.mode} · {usd(s.price)}</p>
+                      </div>
+                    </div>
 
-            {loading ? (
-              <div className="mt-4 grid gap-4 md:grid-cols-2" aria-busy="true">
-                {[1, 2, 3, 4].map((n) => (
-                  <div key={n} className="h-44 animate-pulse rounded-2xl bg-gray-200" />
+                    <p className="mt-3 line-clamp-2 text-sm text-gray-700">{s.description}</p>
+                    <p className="mt-3 text-xs text-gray-500">
+                      {s.available ? "Available for booking" : "Marked unavailable"} · {statusNote[s.status]}
+                    </p>
+
+                    <div className="mt-4 flex gap-3">
+                      <button onClick={() => openForm(s)} className={`${actionClass} bg-teal-700 text-white hover:bg-teal-800`}>Edit</button>
+                      <button
+                        onClick={() => {
+                          setActionError(null);
+                          setSuccess("");
+                          setDeleting(s);
+                        }}
+                        className={`${actionClass} border border-red-300 text-red-600 hover:bg-red-50`}
+                      >
+                        Delete
+                      </button>
+                    </div>
+
+                    {actionError?.id === s.id && (
+                      <p role="alert" className="mt-3 rounded-lg bg-red-50 p-3 text-sm font-medium text-red-600">{actionError.message}</p>
+                    )}
+                  </article>
                 ))}
               </div>
-            ) : error ? (
-              <div role="alert" className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
-                <p className="font-medium text-red-600">{error}</p>
-                <button onClick={retry} className="mt-4 rounded-lg bg-orange-500 px-5 py-2 font-semibold text-white transition hover:bg-orange-600">Try again</button>
-              </div>
-            ) : services.length === 0 ? (
-              <div className="mt-4 rounded-2xl border border-dashed border-gray-300 p-10 text-center text-gray-600">
-                <p>{filter === "all" ? "You have not added any services yet." : `You have no ${filter} services.`}</p>
-                {filter === "all" && (
-                  <Link href="/dashboard/technician/add-service" className="mt-4 inline-block font-semibold text-teal-700 hover:underline">Add your first service →</Link>
-                )}
-              </div>
-            ) : (
-              <>
-                <p className="mt-4 text-sm text-gray-600">{total} {total === 1 ? "service" : "services"}</p>
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  {services.map((s) => (
-                    <article key={s.id} className="flex flex-col rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-                      <div className="flex items-start gap-4">
-                        {s.imageUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={s.imageUrl} alt="" className="h-16 w-20 shrink-0 rounded-lg object-cover" />
-                        ) : (
-                          <div className="flex h-16 w-20 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-3xl" aria-hidden>{categoryIcon(s.category)}</div>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-start justify-between gap-3">
-                            <h3 className="font-semibold text-gray-900">{s.title}</h3>
-                            <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${statusStyle[s.status]}`}>{statusLabel[s.status]}</span>
-                          </div>
-                          <p className="mt-1 text-sm text-gray-600">{s.category} · {s.mode} · {usd(s.price)}</p>
-                        </div>
-                      </div>
 
-                      <p className="mt-3 line-clamp-2 text-sm text-gray-700">{s.description}</p>
-                      <p className="mt-3 text-xs text-gray-500">
-                        {s.available ? "Available for booking" : "Marked unavailable"} · {statusNote[s.status]}
-                      </p>
+              {totalPages > 1 && (
+                <nav aria-label="Pagination" className="mt-8 flex items-center justify-center gap-4">
+                  <button onClick={() => goToPage(page - 1)} disabled={page <= 1} className={`${buttonClass} disabled:pointer-events-none disabled:opacity-40`}>← Previous</button>
+                  <span className="text-sm text-gray-600">Page {page} of {totalPages}</span>
+                  <button onClick={() => goToPage(page + 1)} disabled={page >= totalPages} className={`${buttonClass} disabled:pointer-events-none disabled:opacity-40`}>Next →</button>
+                </nav>
+              )}
+            </>
+          )}
+        </>
+      )}
 
-                      {confirmId === s.id ? (
-                        <div className="mt-4 rounded-lg bg-red-50 p-3">
-                          <p className="text-sm font-medium text-red-700">Delete this service? This cannot be undone.</p>
-                          <div className="mt-3 flex gap-3">
-                            <button onClick={() => deleteService(s.id)} disabled={busyId === s.id} className={`${actionClass} bg-red-600 text-white hover:bg-red-700`}>
-                              {busyId === s.id ? "Deleting..." : "Yes, delete"}
-                            </button>
-                            <button onClick={() => setConfirmId("")} disabled={busyId === s.id} className={`${buttonClass} disabled:opacity-60`}>Keep</button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="mt-4 flex gap-3">
-                          <button onClick={() => openForm(s)} className={`${actionClass} bg-teal-700 text-white hover:bg-teal-800`}>Edit</button>
-                          <button
-                            onClick={() => {
-                              setActionError(null);
-                              setSuccess("");
-                              setConfirmId(s.id);
-                            }}
-                            className={`${actionClass} border border-red-300 text-red-600 hover:bg-red-50`}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      )}
+      {deleting && (
+        <ConfirmDialog
+          title="Delete this service?"
+          message={`${deleting.title}. Customers will no longer see it and this cannot be undone.`}
+          confirmLabel="Yes, delete service"
+          cancelLabel="Keep service"
+          busyLabel="Deleting..."
+          busy={busyId === deleting.id}
+          error={actionError?.id === deleting.id ? actionError.message : undefined}
+          onConfirm={() => deleteService(deleting.id)}
+          onClose={() => setDeleting(null)}
+        />
+      )}
+    </>
+  );
+}
 
-                      {actionError?.id === s.id && (
-                        <p role="alert" className="mt-3 rounded-lg bg-red-50 p-3 text-sm font-medium text-red-600">{actionError.message}</p>
-                      )}
-                    </article>
-                  ))}
-                </div>
-
-                {totalPages > 1 && (
-                  <nav aria-label="Pagination" className="mt-8 flex items-center justify-center gap-4">
-                    <button onClick={() => goToPage(page - 1)} disabled={page <= 1} className={`${buttonClass} disabled:pointer-events-none disabled:opacity-40`}>← Previous</button>
-                    <span className="text-sm text-gray-600">Page {page} of {totalPages}</span>
-                    <button onClick={() => goToPage(page + 1)} disabled={page >= totalPages} className={`${buttonClass} disabled:pointer-events-none disabled:opacity-40`}>Next →</button>
-                  </nav>
-                )}
-              </>
-            )}
-          </>
-        )}
-      </>
-    );
-  }
-
+export default function MyServicesPage() {
   return (
     <main className="mx-auto max-w-6xl px-4 py-10">
       <Link href="/dashboard/technician" className="text-sm font-semibold text-teal-700 hover:underline">← Technician Dashboard</Link>
@@ -326,14 +304,14 @@ export default function MyServicesPage() {
           <h1 className="text-3xl font-bold text-gray-900">My Services</h1>
           <p className="mt-2 text-gray-600">Add, edit and remove the services you offer.</p>
         </div>
-        {isTechnician && (
-          <Link href="/dashboard/technician/add-service" className="rounded-lg bg-orange-500 px-5 py-3 font-semibold text-white transition hover:bg-orange-600">
-            + Add service
-          </Link>
-        )}
+        <Link href="/dashboard/technician/add-service" className="rounded-lg bg-orange-500 px-5 py-3 font-semibold text-white transition hover:bg-orange-600">
+          + Add service
+        </Link>
       </div>
 
-      {content}
+      <RoleGate role="technician" action="manage services" signInPath="/dashboard/technician/my-services">
+        {() => <ServicesManager />}
+      </RoleGate>
     </main>
   );
 }

@@ -8,100 +8,80 @@ A modern, responsive device and home appliance repair service booking platform b
 
 ## Features
 
-### 1. Authentication
-- Sign up and sign in using email and password.
-- Google OAuth authentication.
-- Role-based access for Customer, Technician, and Admin.
-- Protected dashboard routes.
-- User profile management.
+### Authentication
+- Sign up with name, email, password and a role (Customer or Technician). Admin accounts cannot be created from the form.
+- Password rules: at least 6 characters, one uppercase and one lowercase letter, with errors shown under the field.
+- Sign in with email and password, or with Google.
+- Signed-in users are sent to the page they asked for, or to their own dashboard.
+- Protected dashboards for every role, and a profile page (name, phone, area, bio, photo).
 
-### 2. Home Page
-- Responsive navigation bar and footer.
-- Hero section introducing FixMate.
-- Featured repair services.
-- Service categories.
-- How It Works section.
-- Call-to-action sections.
+### Public site
+- Sticky navbar with the active page highlighted, a mobile menu, and an avatar menu with the role's dashboard links.
+- Home page with a hero, featured services, categories, How it works and Why FixMate sections.
+- Services page with server-side search, category and service mode filters, sorting and pagination. Filters stay in the URL.
+- Service details with price, duration, mode, service area and a technician summary.
 
-### 3. Services
-- Browse available repair services.
-- Search services by keyword.
-- Filter services by category.
-- Sort services by price.
-- View detailed service information.
-- Access services through category-based navigation.
+### Customer
+- Request a repair with phone, address, preferred date and a problem description.
+- Track bookings by status, cancel while a request is still pending, and see the bill the technician sends.
+- Pay completed jobs with Stripe Checkout, and view payment history.
 
-### 4. Customer Dashboard
-- View booking statistics.
-- Track repair requests.
-- View booking details and status.
-- Cancel eligible booking requests.
-- Pay for completed repair services.
-- View payment history.
+### Technician
+- Add services with an image upload, edit and delete them, and see their approval status.
+- Manage requests: accept or reject, start work, and complete the job by sending a bill.
+- Overview with services, pending requests and earnings.
 
-### 5. Technician Dashboard
-- Add new repair services.
-- Edit and delete owned services.
-- Manage service availability.
-- View incoming repair requests.
-- Accept or reject requests.
-- Update repair progress.
-- Mark jobs as completed.
+### Admin
+- Overview of users, services, bookings and revenue.
+- Change user roles, approve or reject services, view all bookings and every transaction.
 
-### 6. Admin Dashboard
-- Manage users and user roles.
-- Review and approve technician services.
-- Monitor all bookings.
-- View payment transactions.
-- Monitor platform statistics and revenue.
-
-### 7. Additional Features
-- Responsive design for mobile, tablet, and desktop.
-- Image upload through ImgBB.
-- Loading, error, and empty states.
-- Toast notifications and confirmation dialogs.
-- Stripe Checkout integration.
+### Quality
+- Responsive layout, loading skeletons, error and not-found pages, empty states.
+- Toast notifications and confirmation dialogs for destructive actions.
 
 ## How It Works
 
-### Customer Workflow
-1. Create an account or sign in.
-2. Browse available repair services.
-3. Select a service and submit a repair request with issue details.
-4. Track the booking status from the dashboard.
-5. The technician accepts and completes the repair.
-6. Once the booking is completed, pay securely through Stripe Checkout.
-7. View payment history.
+1. A customer or technician signs up and chooses a role.
+2. A technician adds a service. It stays pending until an admin approves it.
+3. A customer sends a repair request for an approved service.
+4. The technician accepts it, starts the work and completes it by sending the final bill.
+5. The customer sees **Pay Now** and pays with Stripe. The backend confirms the payment and marks the booking paid.
+6. The admin monitors users, services, bookings and transactions.
 
-### Technician Workflow
-1. Sign in as a technician.
-2. Add repair services with descriptions, pricing, and images.
-3. Wait for admin approval.
-4. Receive customer repair requests.
-5. Accept or reject requests.
-6. Update the repair status as work progresses.
-7. Mark the repair as completed.
+## Demo Accounts
 
-### Admin Workflow
-1. Sign in as an admin.
-2. Manage registered users and their roles.
-3. Review technician service listings.
-4. Approve or manage services.
-5. Monitor bookings and payment transactions.
-6. Track platform revenue.
+The Sign in page lists ready-to-use accounts. Passwords are never shown there.
+
+| Role | Email | Password |
+| --- | --- | --- |
+| Admin | yeasminmem@gmail.com | _add the admin password here_ |
+
+Stripe runs in test mode. Use the card `4242 4242 4242 4242` with any future date and any CVC.
 
 ## Technologies Used
 
-- Next.js
-- React
+- [Next.js](https://nextjs.org/) (App Router) and React
 - TypeScript
 - Tailwind CSS
-- Better Auth
-- Stripe Checkout
-- ImgBB
-- Lucide React
+- [Better Auth](https://www.better-auth.com/) for sessions and sign in
+- [Sonner](https://sonner.emilkowal.ski/) for toast notifications
+- Stripe Checkout (through the backend)
+- ImgBB for image uploads (through the backend)
 
+## Getting Started
 
+```bash
+npm install
+npm run dev
+```
+
+Create a `.env` file in the project root (it is git-ignored):
+
+```
+NEXT_PUBLIC_BETTER_AUTH_URL=<URL of the Express API>
+```
+
+Requests to `/api/auth/*` are forwarded to that API by `next.config.ts`, so the session cookie belongs to this site.
 
 ## Backend Repository
 
