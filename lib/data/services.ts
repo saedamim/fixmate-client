@@ -19,7 +19,6 @@ export type Service = {
   imageUrl: string | null; // ImgBB URL from the backend; null shows a placeholder
   status: "pending" | "approved" | "rejected";
   available: boolean;
-  featured: boolean;
   createdAt: string; // ISO date
 };
 
@@ -79,10 +78,11 @@ export async function getServiceById(id: string): Promise<Service | null> {
 }
 
 
-export async function getFeaturedServices(): Promise<Service[]> {
-  const { services } = await getServices({ limit: 50 });
+// The 6 newest approved services, for the Home page (the API already returns only approved ones)
+export async function getLatestServices(): Promise<Service[]> {
+  const { services } = await getServices({ sort: "newest", limit: 6 });
 
-  return services.filter((s) => s.available && s.featured).slice(0, 6);
+  return services.filter((s) => s.available);
 }
 
 export type BookingActivity = {

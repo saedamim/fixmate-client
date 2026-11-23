@@ -3,7 +3,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import ServiceCard from "@/components/site/ServiceCard";
 import BookingActivityCard from "@/components/site/BookingActivityCard";
-import { categories, features, getFeaturedServices, getRecentActivity, stats, steps, testimonials, type Service } from "@/lib/data/services";
+import { categories, features, getLatestServices, getRecentActivity, stats, steps, testimonials, type Service } from "@/lib/data/services";
 
 function SectionHeading({ title, subtitle }: { title: string; subtitle: string }) {
   return (
@@ -33,7 +33,7 @@ async function FeaturedServices() {
   let featured: Service[];
 
   try {
-    featured = await getFeaturedServices();
+    featured = await getLatestServices();
   } catch (error) {
     console.error("Could not load featured services:", error);
     return <p className={messageClass}>Featured services could not be loaded. Please try again later.</p>;
@@ -141,7 +141,7 @@ export default async function Home() {
 
       {/* How it works */}
       <section id="how-it-works" className="mx-auto max-w-6xl scroll-mt-16 px-4 py-16">
-        <SectionHeading title="How FixMate works" subtitle="Three simple steps from broken to fixed." />
+        <SectionHeading title="How FixMate works" subtitle="Four simple steps from broken to fixed." />
         <ol className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {steps.map((s, i) => (
             <li key={s.title} className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
