@@ -4,8 +4,30 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { safeRedirect, siteUrl, signUp, signIn } from "@/lib/auth-client";
+import { dashboardPath, safeRedirect, siteUrl, signUp, signIn } from "@/lib/auth-client";
 import AvatarPicker from "@/components/site/AvatarPicker";
+
+// Only these two roles can be chosen at sign up; admin accounts are created by hand. The server checks this again.
+const roles = [
+  { value: "customer", title: "Customer", text: "Book repairs and pay after the job is done." },
+  { value: "technician", title: "Technician", text: "List repair services and manage incoming jobs." },
+] as const;
+
+type Role = (typeof roles)[number]["value"];
+type Errors = Partial<Record<"name" | "email" | "password" | "confirmPassword", string>>;
+
+function validate(name: string, email: string, password: string, confirmPassword: string): Errors {
+  const errors: Errors = {};
+  if (!name.trim()) errors.name = "Full name is required";
+  if (!email.trim()) errors.email = "Email is required";
+  else if (!/^\S+@\S+\.\S+$/.test(email.trim())) errors.email = "Enter a valid email address";
+  if (!password) errors.password = "Password is required";
+  else if (password.length < 6) errors.password = "Password must be at least 6 characters";
+  else if (!/[A-Z]/.test(password)) errors.password = "Password must include an uppercase letter";
+  else if (!/[a-z]/.test(password)) errors.password = "Password must include a lowercase letter";
+  if (confirmPassword !== password) errors.confirmPassword = "Passwords do not match";
+  return errors;
+}
 
 function SignUpForm() {
   const router = useRouter();
@@ -19,6 +41,8 @@ function SignUpForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [role, setRole] = useState<Role>("customer");
+  const [errors, setErrors] = useState<Errors>({});
   const [avatar, setAvatar] = useState<string | null>(null); // link of the uploaded picture
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [error, setError] = useState("");
@@ -29,8 +53,9 @@ function SignUpForm() {
     e.preventDefault();
     setError("");
 
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
+    const found = validate(name, email, password, confirmPassword);
+    setErrors(found);
+    if (Object.keys(found).length > 0) {
       return;
     }
 
@@ -38,9 +63,10 @@ function SignUpForm() {
       setLoading(true);
 
       const { error } = await signUp.email({
-        name,
-        email,
+        name: name.trim(),
+        email: email.trim(),
         password,
+        role,
         ...(avatar ? { image: avatar } : {}),
       });
 
@@ -49,7 +75,9 @@ function SignUpForm() {
         return;
       }
 
-      router.push(redirect);
+
+      // Without a page to return to, go to the new account's own dashboard
+      router.push(redirect === "/" ? dashboardPath(role) : redirect);
       router.refresh();
     } catch {
       setError("Something went wrong. Please try again.");
@@ -97,65 +125,90 @@ function SignUpForm() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} noValidate className="space-y-5">
 
           <AvatarPicker name={name} url={avatar} onChange={setAvatar} onBusyChange={setAvatarBusy} disabled={loading || googleLoading} />
 
+          <fieldset>
+            <legend className="mb-2 block text-sm font-semibold text-gray-800">I want to join as</legend>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {roles.map((r) => (
+                <label
+                  key={r.value}
+                  className={`cursor-pointer rounded-lg border p-3 transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-teal-100 ${
+                    role === r.value ? "border-teal-700 bg-teal-50" : "border-gray-300 bg-white hover:bg-gray-50"
+                  }`}
+                >
+                  <input type="radio" name="role" value={r.value} checked={role === r.value} onChange={() => setRole(r.value)} className="sr-only" />
+                  <span className="block text-sm font-semibold text-gray-900">{r.title}</span>
+                  <span className="mt-1 block text-xs text-gray-600">{r.text}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
           <div>
-            <label className="mb-2 block text-sm font-semibold text-gray-800">
+            <label htmlFor="name" className="mb-2 block text-sm font-semibold text-gray-800">
               Full Name
             </label>
             <input
+              id="name"
               type="text"
               placeholder="Enter your full name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               className={inputClass}
-              required
+              aria-invalid={!!errors.name}
             />
+            <FieldError message={errors.name} />
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-semibold text-gray-800">
+            <label htmlFor="email" className="mb-2 block text-sm font-semibold text-gray-800">
               Email Address
             </label>
             <input
+              id="email"
               type="email"
               placeholder="Enter your email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className={inputClass}
-              required
+              aria-invalid={!!errors.email}
             />
+            <FieldError message={errors.email} />
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-semibold text-gray-800">
+            <label htmlFor="password" className="mb-2 block text-sm font-semibold text-gray-800">
               Password
             </label>
             <input
+              id="password"
               type="password"
               placeholder="Create a password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className={inputClass}
-              minLength={8}
-              required
+              aria-invalid={!!errors.password}
             />
+            <FieldError message={errors.password} />
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-semibold text-gray-800">
+            <label htmlFor="confirmPassword" className="mb-2 block text-sm font-semibold text-gray-800">
               Confirm Password
             </label>
             <input
+              id="confirmPassword"
               type="password"
               placeholder="Confirm your password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               className={inputClass}
-              required
+              aria-invalid={!!errors.confirmPassword}
             />
+            <FieldError message={errors.confirmPassword} />
           </div>
 
           {error && (
@@ -227,6 +280,10 @@ function SignUpForm() {
 }
 
 
+
+function FieldError({ message }: { message?: string }) {
+  return message ? <p role="alert" className="mt-1 text-sm font-medium text-red-600">{message}</p> : null;
+}
 
 // useSearchParams needs a Suspense boundary
 export default function SignUpPage() {

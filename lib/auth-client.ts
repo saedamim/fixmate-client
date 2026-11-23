@@ -17,3 +17,7 @@ export const safeRedirect = (target: string | null) =>
 
 // Absolute URL on THIS site for Better Auth's OAuth redirects (a relative path would be resolved against the API's URL)
 export const siteUrl = (path: string) => `${window.location.origin}${path}`;
+
+// Each role's own dashboard (customer is the default)
+export const dashboardPath = (role?: string | null) =>
+  role === "technician" ? "/dashboard/technician" : role === "admin" ? "/dashboard/admin" : "/dashboard/customer";
