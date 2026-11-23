@@ -53,3 +53,14 @@ export const formatDateTime = (iso: string) =>
 
 
 export const shortId = (id: string) => id.slice(-6).toUpperCase();
+
+// Sent by GET /api/payments/earnings: money Stripe confirmed for this technician (paid payments only)
+export type Earnings = {
+  totalEarnings: number;
+  paidCount: number;
+  currency: string;
+  recent: { id: string; serviceTitle: string; customerName: string; amount: number; transactionId: string | null; paidAt: string | null }[];
+};
+
+// Sent in GET /api/services/mine: counts cover all of this technician's services
+export type ServiceCounts = { total: number; pending: number; approved: number; rejected: number };

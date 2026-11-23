@@ -9,6 +9,8 @@ export type Service = {
   category: string;
   mode: ServiceMode;
   price: number;
+  duration?: string; // estimated duration, e.g. "1-2 hours" (older services have none)
+  serviceArea?: string;
   technician: string;
   imageUrl: string | null; // ImgBB URL from the backend; null shows a placeholder
   status: "pending" | "approved" | "rejected";

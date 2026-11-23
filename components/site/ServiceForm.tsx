@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { callApi, errorMessage } from "@/lib/api";
+import { useSession } from "@/lib/auth-client";
 import { API_URL, categories, serviceModes, type Service } from "@/lib/data/services";
 
 type Form = {
@@ -10,12 +11,14 @@ type Form = {
   category: string;
   mode: string;
   price: string; // kept as text while typing, sent as a number
+  duration: string;
+  serviceArea: string;
   imageUrl: string;
   available: boolean;
 };
 type Errors = Partial<Record<keyof Form, string>>;
 
-const emptyForm: Form = { title: "", description: "", category: "", mode: "", price: "", imageUrl: "", available: true };
+const emptyForm: Form = { title: "", description: "", category: "", mode: "", price: "", duration: "", serviceArea: "", imageUrl: "", available: true };
 
 const inputClass =
   "w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-900 placeholder:text-gray-500 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100";
@@ -35,6 +38,8 @@ function validate(form: Form): Errors {
   if (description.length < 10 || description.length > 1000) errors.description = "Description must be 10 to 1000 characters";
   if (!form.category) errors.category = "Please choose a category";
   if (!form.mode) errors.mode = "Please choose a service mode";
+  if (form.duration.trim().length > 50) errors.duration = "Duration must be 50 characters or fewer";
+  if (form.serviceArea.trim().length > 100) errors.serviceArea = "Service area must be 100 characters or fewer";
   if (!form.price.trim() || !Number.isFinite(price) || price <= 0 || price > 100000) errors.price = "Enter a price greater than 0";
   return errors;
 }
@@ -50,9 +55,10 @@ export default function ServiceForm({
   onCancel?: () => void;
 }) {
   const isNew = !service;
+  const { data: session } = useSession(); // shown read-only: the server takes the owner from the token, not from this form
   const [form, setForm] = useState<Form>(
     service
-      ? { title: service.title, description: service.description, category: service.category, mode: service.mode, price: String(service.price), imageUrl: service.imageUrl ?? "", available: service.available }
+      ? { title: service.title, description: service.description, category: service.category, mode: service.mode, price: String(service.price), duration: service.duration ?? "", serviceArea: service.serviceArea ?? "", imageUrl: service.imageUrl ?? "", available: service.available }
       : emptyForm
   );
   const [errors, setErrors] = useState<Errors>({});
@@ -108,6 +114,8 @@ export default function ServiceForm({
           category: form.category,
           mode: form.mode,
           price: Number(form.price),
+          duration: form.duration.trim(),
+          serviceArea: form.serviceArea.trim(),
           imageUrl: form.imageUrl || null,
           available: form.available,
         },
@@ -116,7 +124,7 @@ export default function ServiceForm({
 
       onSaved(
         isNew
-          ? "Service added. An admin must approve it before customers can see it."
+          ? "Service submitted for review. An admin must approve it before customers can see it."
           : "Service updated. It is pending approval again, so customers cannot see it until an admin approves it."
       );
     } catch (err) {
@@ -174,14 +182,38 @@ export default function ServiceForm({
             {fieldError("mode")}
           </div>
           <div>
-            <label htmlFor="price" className="mb-2 block text-sm font-semibold text-gray-800">Starting price ($)</label>
+            <label htmlFor="price" className="mb-2 block text-sm font-semibold text-gray-800">Base price (USD)</label>
             <input id="price" type="number" min="0" step="0.01" value={form.price} onChange={(e) => update("price", e.target.value)} aria-invalid={Boolean(errors.price)} className={inputClass} />
             {fieldError("price")}
           </div>
         </div>
 
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div>
+            <label htmlFor="duration" className="mb-2 block text-sm font-semibold text-gray-800">Estimated duration</label>
+            <input id="duration" value={form.duration} onChange={(e) => update("duration", e.target.value)} placeholder="e.g. 1-2 hours" aria-invalid={Boolean(errors.duration)} className={inputClass} />
+            {fieldError("duration")}
+          </div>
+          <div>
+            <label htmlFor="serviceArea" className="mb-2 block text-sm font-semibold text-gray-800">Service area</label>
+            <input id="serviceArea" value={form.serviceArea} onChange={(e) => update("serviceArea", e.target.value)} placeholder="e.g. Dhanmondi, Dhaka" aria-invalid={Boolean(errors.serviceArea)} className={inputClass} />
+            {fieldError("serviceArea")}
+          </div>
+        </div>
+
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div>
+            <label htmlFor="technicianName" className="mb-2 block text-sm font-semibold text-gray-800">Technician name</label>
+            <input id="technicianName" value={service?.technician ?? session?.user.name ?? ""} readOnly className={`${inputClass} bg-gray-50 text-gray-600`} />
+          </div>
+          <div>
+            <label htmlFor="technicianEmail" className="mb-2 block text-sm font-semibold text-gray-800">Technician email</label>
+            <input id="technicianEmail" value={session?.user.email ?? ""} readOnly className={`${inputClass} bg-gray-50 text-gray-600`} />
+          </div>
+        </div>
+
         <div>
-          <label htmlFor="image" className="mb-2 block text-sm font-semibold text-gray-800">Image (optional)</label>
+          <label htmlFor="image" className="mb-2 block text-sm font-semibold text-gray-800">Service image (optional)</label>
           <div className="flex flex-wrap items-center gap-4">
             {form.imageUrl && (
               // eslint-disable-next-line @next/next/no-img-element
@@ -217,7 +249,7 @@ export default function ServiceForm({
 
         <div className="flex flex-wrap gap-3">
           <button type="submit" disabled={saving || uploading} className="rounded-lg bg-orange-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60">
-            {saving ? "Saving..." : isNew ? "Add service" : "Save changes"}
+            {saving ? "Saving..." : isNew ? "Submit for review" : "Save changes"}
           </button>
           {onCancel && (
             <button type="button" onClick={onCancel} disabled={saving} className={buttonClass}>

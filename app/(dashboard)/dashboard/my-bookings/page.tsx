@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
 import { callApi, errorMessage, SESSION_EXPIRED } from "@/lib/api";
 import { formatDate, statusLabel, statusStyle, type BookingStatus as Status } from "@/lib/bookings";
-import { usd } from "@/lib/currency";
+import { usd, usdMoney } from "@/lib/currency";
+import { formatDateTime, type Payment } from "@/lib/payments";
 
 type Booking = {
   id: string;
@@ -16,7 +17,7 @@ type Booking = {
   preferredDate: string;
   preferredTime: string;
   status: Status;
-  paymentStatus: string; // "unpaid" for now; payment is not built yet
+  paymentStatus: string; // "unpaid" or "paid"; only the backend sets it, after Stripe confirms
   finalAmount?: number; // set by the technician when the work is completed
 };
 
@@ -61,6 +62,7 @@ export default function MyBookingsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [paidByBooking, setPaidByBooking] = useState<Record<string, Payment>>({}); // confirmed payments, by booking id
 
   const [confirming, setConfirming] = useState<Booking | null>(null);
   const [cancelling, setCancelling] = useState(false);
@@ -105,6 +107,24 @@ export default function MyBookingsPage() {
       ignore = true;
     };
   }, [isCustomer, filter, page, attempt]);
+
+  // Payment details (amount, transaction id, date) for the paid bookings shown on this page. One lookup by booking id,
+  // so it never depends on how many payments the customer has. Optional: bookings still work without it.
+  useEffect(() => {
+    const ids = bookings.filter((b) => b.paymentStatus === "paid").map((b) => b.id);
+    if (!isCustomer || ids.length === 0) return;
+
+    let ignore = false;
+    callApi(`/api/payments/my?status=paid&limit=50&bookingIds=${ids.join(",")}`, { forbiddenMessage })
+      .then((result: { payments: Payment[] }) => {
+        if (!ignore) setPaidByBooking((current) => ({ ...current, ...Object.fromEntries(result.payments.map((p) => [p.bookingId, p])) }));
+      })
+      .catch(() => {});
+
+    return () => {
+      ignore = true;
+    };
+  }, [isCustomer, bookings]);
 
   // Coming back with the browser's Back button restores this page from cache: unlock Pay and reload
   useEffect(() => {
@@ -361,7 +381,7 @@ export default function MyBookingsPage() {
                     </div>
                     {b.finalAmount !== undefined && (
                       <div>
-                        <dt className="text-gray-500">Final amount</dt>
+                        <dt className="text-gray-500">{b.paymentStatus === "paid" ? "Final amount" : "Amount due"}</dt>
                         <dd className="font-medium text-gray-900">{usd(b.finalAmount)}</dd>
                       </div>
                     )}
@@ -373,6 +393,18 @@ export default function MyBookingsPage() {
                     </div>
                   </dl>
 
+                  {b.paymentStatus === "paid" && (
+                    <div role="status" className="mt-4 rounded-lg bg-green-50 p-3 text-sm text-green-800">
+                      <p className="font-semibold">
+                        Payment confirmed{paidByBooking[b.id] ? ` · ${usdMoney(paidByBooking[b.id].amount)} ${paidByBooking[b.id].currency.toUpperCase()}` : ""}
+                      </p>
+                      {paidByBooking[b.id]?.paidAt && <p className="mt-1">Paid on {formatDateTime(paidByBooking[b.id].paidAt!)}</p>}
+                      {paidByBooking[b.id]?.transactionId && (
+                        <p className="mt-1 break-all">Transaction ID: {paidByBooking[b.id].transactionId}</p>
+                      )}
+                    </div>
+                  )}
+
                   {b.status === "requested" && (
                     <button
                       onClick={() => openConfirm(b)}
@@ -383,14 +415,14 @@ export default function MyBookingsPage() {
                   )}
 
                   {/* Pay: only for completed bookings that are still unpaid. The backend decides the amount. */}
-                  {b.status === "completed" && b.paymentStatus === "unpaid" && (
+                  {b.status === "completed" && b.paymentStatus === "unpaid" && typeof b.finalAmount === "number" && (
                     <div className="mt-5">
                       <button
                         onClick={() => startPayment(b.id)}
                         disabled={payingId !== ""}
                         className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        {payingId === b.id ? "Redirecting to payment..." : "Pay Now"}
+                        {payingId === b.id ? "Redirecting to payment..." : `Pay Now · ${usdMoney(b.finalAmount)}`}
                       </button>
                       {payError?.id === b.id && (
                         <p role="alert" className="mt-3 rounded-lg bg-red-50 p-3 text-sm font-medium text-red-600">{payError.message}</p>

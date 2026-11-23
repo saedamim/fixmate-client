@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
 import { callApi, errorMessage, SESSION_EXPIRED } from "@/lib/api";
 import { formatDate, statusLabel, statusStyle, type BookingStatus as Status } from "@/lib/bookings";
+import { usdMoney } from "@/lib/currency";
+import { formatDateTime, type Earnings, type ServiceCounts } from "@/lib/payments";
 
 type Request = {
   id: string;
@@ -52,6 +54,11 @@ export default function TechnicianDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Services and earnings come from their own endpoints; a failure here must not hide the request list
+  const [serviceCounts, setServiceCounts] = useState<ServiceCounts | null>(null);
+  const [earnings, setEarnings] = useState<Earnings | null>(null);
+  const [overviewError, setOverviewError] = useState("");
+
   const [busyId, setBusyId] = useState(""); // booking with an action in progress
   const [actionError, setActionError] = useState<{ id: string; message: string } | null>(null);
   const [completingId, setCompletingId] = useState(""); // booking showing the final amount form
@@ -90,6 +97,30 @@ export default function TechnicianDashboardPage() {
       ignore = true;
     };
   }, [isTechnician, filter, page, attempt]);
+
+  // Services (counts) and earnings; reloaded with the request list, because a payment can arrive at any time
+  useEffect(() => {
+    if (!isTechnician) return;
+
+    let ignore = false;
+    Promise.all([
+      callApi("/api/services/mine?limit=1", { forbiddenMessage }),
+      callApi("/api/payments/earnings", { forbiddenMessage }),
+    ])
+      .then(([services, money]) => {
+        if (ignore) return;
+        setServiceCounts(services.counts);
+        setEarnings(money);
+        setOverviewError("");
+      })
+      .catch((err) => {
+        if (!ignore) setOverviewError(errorMessage(err));
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [isTechnician, attempt]);
 
   const selectFilter = (value: "all" | Status) => {
     if (value === filter && page === 1) return; // already showing this list
@@ -150,9 +181,16 @@ export default function TechnicianDashboardPage() {
     updateStatus(id, "completed", finalAmount);
   };
 
+  const overview = [
+    { label: "Total Services", value: serviceCounts?.total, style: "text-gray-900" },
+    { label: "Approved Services", value: serviceCounts?.approved, style: "text-green-700" },
+    { label: "Pending Approval", value: serviceCounts?.pending, style: "text-orange-600" },
+    { label: "Total Earnings", value: earnings && usdMoney(earnings.totalEarnings), style: "text-teal-700" },
+  ];
+
   const summary = [
     { label: "Total Requests", value: counts?.total ?? 0, style: "text-gray-900" },
-    { label: "Pending", value: counts?.requested ?? 0, style: "text-orange-600" },
+    { label: "New Requests", value: counts?.requested ?? 0, style: "text-orange-600" },
     { label: "Accepted", value: counts?.accepted ?? 0, style: "text-teal-700" },
     { label: "In Progress", value: counts?.in_progress ?? 0, style: "text-sky-700" },
     { label: "Completed", value: counts?.completed ?? 0, style: "text-green-700" },
@@ -221,6 +259,44 @@ export default function TechnicianDashboardPage() {
           </div>
         ) : (
           <>
+            {/* Services and earnings (earnings count only payments Stripe confirmed) */}
+            <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+              {overview.map((s) => (
+                <div key={s.label} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                  <p className="text-sm text-gray-600">{s.label}</p>
+                  <p className={`mt-1 text-3xl font-bold ${s.style}`}>{s.value ?? "—"}</p>
+                </div>
+              ))}
+            </div>
+            {overviewError && (
+              <p role="alert" className="mt-3 rounded-lg bg-red-50 p-3 text-sm font-medium text-red-600">
+                Could not load your services and earnings: {overviewError}
+              </p>
+            )}
+
+            <section aria-labelledby="recent-earnings" className="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+              <h2 id="recent-earnings" className="text-lg font-bold text-gray-900">Recent Earnings</h2>
+              {!earnings ? (
+                <p className="mt-3 text-sm text-gray-600">{overviewError ? "Unavailable." : "Loading..."}</p>
+              ) : earnings.recent.length === 0 ? (
+                <p className="mt-3 text-sm text-gray-600">No payments yet. Earnings appear here once a customer&apos;s payment is confirmed.</p>
+              ) : (
+                <ul className="mt-3 divide-y divide-gray-100">
+                  {earnings.recent.map((e) => (
+                    <li key={e.id} className="flex items-start justify-between gap-4 py-3">
+                      <div className="min-w-0">
+                        <p className="font-medium text-gray-900">{e.serviceTitle}</p>
+                        <p className="text-sm text-gray-600">
+                          {e.customerName}{e.paidAt && ` · ${formatDateTime(e.paidAt)}`}
+                        </p>
+                      </div>
+                      <p className="shrink-0 font-semibold text-green-700">+{usdMoney(e.amount)}</p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
             {/* Summary cards */}
             <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-5">
               {summary.map((s) => (
@@ -397,7 +473,7 @@ export default function TechnicianDashboardPage() {
       <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Technician Dashboard</h1>
-          <p className="mt-2 text-gray-600">Manage the repair requests assigned to you.</p>
+          <p className="mt-2 text-gray-600">Your services, earnings and the repair requests assigned to you.</p>
         </div>
         {isTechnician && (
           <div className="flex flex-wrap gap-3">
