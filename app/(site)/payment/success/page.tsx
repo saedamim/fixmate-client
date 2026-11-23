@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useSession } from "@/lib/auth-client";
 import { ApiError, callApi, errorMessage, SESSION_EXPIRED } from "@/lib/api";
+import { celebrate } from "@/lib/confetti";
 import { usdMoney } from "@/lib/currency";
 import { formatDateTime, type Payment } from "@/lib/payments";
 
@@ -51,8 +52,8 @@ function Confirmation() {
         if (data.payment?.status === "paid") {
           setResult({ kind: "paid", payment: data.payment });
           toast.success("Payment confirmed. Thank you!");
-        }
-        else setResult({ kind: "error", message: "We could not confirm this payment. Please check your payment history." });
+          celebrate();
+        } else setResult({ kind: "error", message: "We could not confirm this payment. Please check your payment history." });
       })
       .catch((err) => {
         if (ignore) return;
